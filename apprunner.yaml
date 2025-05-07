@@ -4,6 +4,8 @@ build:
   commands:
     build:
       - pip install -r requirements.txt
+      - python manage.py makemigrations core
+      - python manage.py migrate
 run:
   runtime-version: 3.8.16
   command: sh startup.sh

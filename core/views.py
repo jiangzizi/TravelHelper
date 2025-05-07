@@ -26,7 +26,12 @@ def llm_talk(request):
                     conversation_id = int(conversation_id_str)
                     conversation = Conversation.objects.get(id=conversation_id)
                 except (Conversation.DoesNotExist, ValueError):
-                    return JsonResponse({"error": "Invalid conversation_id"}, status=404)
+                    try:
+                        conversation_id = int(conversation_id_str)
+                        conversation = Conversation(id=conversation_id)
+                        conversation.save(force_insert=True)  # 强行指定主键插入
+                    except ValueError:
+                        return JsonResponse({"error": "Invalid conversation_id"}, status=404)
             else:
                 conversation = Conversation.objects.create()
 
@@ -58,4 +63,7 @@ def index(request):
 
 def llm_talk_testing(request):
     print("calling llm talk")
-    return JsonResponse({"llm_content": basic_talk("testing")})
+    return JsonResponse({
+        "llm_content": 
+                         basic_talk([{"role":"user","content": "testing"}])
+                         })
