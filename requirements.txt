@@ -5,6 +5,7 @@ backports.zoneinfo==0.2.1
 cachetools==5.5.2
 certifi==2025.4.26
 Django==4.2.20
+django-cors-headers==3.14.0
 exceptiongroup==1.2.2
 gunicorn==20.1.0
 h11==0.16.0
