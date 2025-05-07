@@ -3,7 +3,7 @@ runtime: python3
 build:
   commands:
     build:
-      - yum install -y pkgconf-pkg-config
+      - yum install pkg-config python3-dev default-libmysqlclient-dev build-essential
       - pip install -r requirements.txt
 run:
   runtime-version: 3.8.16
