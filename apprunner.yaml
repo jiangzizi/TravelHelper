@@ -3,8 +3,6 @@ runtime: python3
 build:
   commands:
     build:
-      - pkg-config --version
-      - yum install pkgconfig -y
       - pip install -r requirements.txt
 run:
   runtime-version: 3.8.16
