@@ -41,7 +41,7 @@ def llm_talk(request):
             past_messages = Message.objects.filter(conversation=conversation).order_by('index')
             history = [{"role": m.role, "content": m.content} for m in past_messages]
             history.append({"role": "user", "content": user_query})
-            # print(f"history is {history}")
+            print(f"history is {history}")
 
             assistant_reply = basic_talk(history)
 

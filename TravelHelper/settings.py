@@ -83,6 +83,9 @@ DATABASES = {
         'PASSWORD': 'jdz123456',
         'HOST': 'mydatabase.cxeksoas4upq.ap-southeast-2.rds.amazonaws.com',
         'PORT': '3306',
+        'OPTIONS': {
+            'sql_mode': 'traditional',
+        }
     }
 }
 
