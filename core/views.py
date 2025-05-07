@@ -4,26 +4,54 @@ from tool.llm_helper import basic_talk
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
+import json
+import uuid
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from core.models import Conversation, Message
 
-@csrf_exempt  # 开发阶段为了方便关闭 CSRF 检查，生产建议改成认证方式处理
+
+@csrf_exempt
 def llm_talk(request):
     if request.method == 'POST':
         try:
             body_unicode = request.body.decode('utf-8')
             body_data = json.loads(body_unicode)
             user_query = body_data.get('query', '')
-            print("Received user query:", user_query)
+            conversation_id_str = body_data.get('conversation_id')
 
-            # 调用你的处理函数
-            result = basic_talk(user_query)
-            return JsonResponse({"llm_content": result})
+            # 判断是否已有对话
+            if conversation_id_str:
+                try:
+                    conversation_id = int(conversation_id_str)
+                    conversation = Conversation.objects.get(id=conversation_id)
+                except (Conversation.DoesNotExist, ValueError):
+                    return JsonResponse({"error": "Invalid conversation_id"}, status=404)
+            else:
+                conversation = Conversation.objects.create()
+
+            # 获取已有上下文
+            past_messages = Message.objects.filter(conversation=conversation).order_by('index')
+            history = [{"role": m.role, "content": m.content} for m in past_messages]
+            history.append({"role": "user", "content": user_query})
+
+            assistant_reply = basic_talk(history)
+
+            next_index = past_messages.count()
+            Message.objects.create(conversation=conversation, role='user', content=user_query, index=next_index)
+            Message.objects.create(conversation=conversation, role='assistant', content=assistant_reply, index=next_index + 1)
+
+            return JsonResponse({
+                "llm_content": assistant_reply,
+                "conversation_id": str(conversation.id)  # 注意返回字符串
+            })
+
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
     else:
         return JsonResponse({"error": "Only POST method is allowed"}, status=405)
-
 
 def index(request):
     return HttpResponse("Hello from core.index!")
