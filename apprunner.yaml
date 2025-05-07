@@ -3,6 +3,8 @@ runtime: python3
 build:
   commands:
     build:
+      - apt-get update
+      - apt-get upgrade
       - pip install -r requirements.txt
       - python manage.py makemigrations core
       - python manage.py migrate
