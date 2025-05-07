@@ -22,6 +22,7 @@ def llm_talk(request):
 
             # 判断是否已有对话
             if conversation_id_str:
+                print(f"there is conversation {conversation_id_str}")
                 try:
                     conversation_id = int(conversation_id_str)
                     conversation = Conversation.objects.get(id=conversation_id)
@@ -33,12 +34,14 @@ def llm_talk(request):
                     except ValueError:
                         return JsonResponse({"error": "Invalid conversation_id"}, status=404)
             else:
+                print(f"there is not conversation {conversation_id_str}")
                 conversation = Conversation.objects.create()
 
             # 获取已有上下文
             past_messages = Message.objects.filter(conversation=conversation).order_by('index')
             history = [{"role": m.role, "content": m.content} for m in past_messages]
             history.append({"role": "user", "content": user_query})
+            # print(f"history is {history}")
 
             assistant_reply = basic_talk(history)
 

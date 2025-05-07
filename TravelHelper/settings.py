@@ -77,8 +77,12 @@ WSGI_APPLICATION = 'TravelHelper.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'TRAVEL',
+        'USER': 'admin',
+        'PASSWORD': 'jdz123456',
+        'HOST': 'mydatabase.cxeksoas4upq.ap-southeast-2.rds.amazonaws.com',
+        'PORT': '3306',
     }
 }
 
