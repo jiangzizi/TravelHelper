@@ -10,6 +10,25 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from core.models import Conversation, Message
 
+import re
+
+def remove_emoji(text):
+    # 使用 Unicode 区间匹配 emoji
+    emoji_pattern = re.compile(
+        "["
+        "\U0001F600-\U0001F64F"  # emoticons
+        "\U0001F300-\U0001F5FF"  # symbols & pictographs
+        "\U0001F680-\U0001F6FF"  # transport & map symbols
+        "\U0001F1E0-\U0001F1FF"  # flags
+        "\U00002700-\U000027BF"  # Dingbats
+        "\U0001F900-\U0001F9FF"  # Supplemental Symbols and Pictographs
+        "\U0001FA70-\U0001FAFF"  # Symbols and Pictographs Extended-A
+        "\U00002600-\U000026FF"  # Misc symbols
+        "]+",
+        flags=re.UNICODE
+    )
+    return emoji_pattern.sub(r'', text)
+
 
 @csrf_exempt
 def llm_talk(request):
@@ -44,11 +63,13 @@ def llm_talk(request):
             print(f"history is {history}")
 
             assistant_reply = basic_talk(history)
+            assistant_reply = remove_emoji(assistant_reply)
+            print("answer already")
 
             next_index = past_messages.count()
             Message.objects.create(conversation=conversation, role='user', content=user_query, index=next_index)
             Message.objects.create(conversation=conversation, role='assistant', content=assistant_reply, index=next_index + 1)
-
+            print("save ready")
             return JsonResponse({
                 "llm_content": assistant_reply,
                 "conversation_id": str(conversation.id)  # 注意返回字符串

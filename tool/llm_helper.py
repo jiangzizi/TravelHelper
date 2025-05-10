@@ -1,16 +1,32 @@
 from zhipuai import ZhipuAI
 from pathlib import Path
-import json, os
+import json
+import os
+
 
 def basic_talk(message_list):
-    from zhipuai import ZhipuAI
-    client = ZhipuAI(api_key="0982eaa8f53f4d649e003336000451c5.E5OuhWgc7pAtHeJf")
-    system_prompt = {"role": "system", "content": "you are a helpful assistant"}
+    system_prompt = {"role": "system",
+                     "content": "you are a helpful assistant"}
     messages = [system_prompt] + message_list
 
-    response = client.chat.completions.create(
-        model="glm-4-flash",
-        messages=messages
+    from openai import OpenAI
+
+    client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key="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",
     )
 
-    return response.choices[0].message.content
+    completion = client.chat.completions.create(
+        extra_headers={
+            # Optional. Site URL for rankings on openrouter.ai.
+            "HTTP-Referer": "<YOUR_SITE_URL>",
+            # Optional. Site title for rankings on openrouter.ai.
+            "X-Title": "<YOUR_SITE_NAME>",
+        },
+        extra_body={},
+        model="deepseek/deepseek-chat-v3-0324:free",
+        messages= messages
+    )
+    print(completion.choices[0].message.content)
+
+    return completion.choices[0].message.content
