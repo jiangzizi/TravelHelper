@@ -1,6 +1,6 @@
 from zhipuai import ZhipuAI
 from pathlib import Path
-import json
+import json, requests
 import os
 
 
@@ -13,7 +13,7 @@ def basic_talk(message_list):
 
     client = OpenAI(
         base_url="https://openrouter.ai/api/v1",
-        api_key="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",
+        api_key="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",
     )
 
     completion = client.chat.completions.create(
