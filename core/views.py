@@ -63,12 +63,12 @@ def llm_talk(request):
             print(f"history is {history}")
 
             assistant_reply = basic_talk(history)
-            assistant_reply = remove_emoji(assistant_reply)
+            # assistant_reply = 
             print("answer already")
 
             next_index = past_messages.count()
             Message.objects.create(conversation=conversation, role='user', content=user_query, index=next_index)
-            Message.objects.create(conversation=conversation, role='assistant', content=assistant_reply, index=next_index + 1)
+            Message.objects.create(conversation=conversation, role='assistant', content=remove_emoji(assistant_reply), index=next_index + 1)
             print("save ready")
             return JsonResponse({
                 "llm_content": assistant_reply,

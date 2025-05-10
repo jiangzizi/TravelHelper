@@ -10,10 +10,11 @@ def basic_talk(message_list):
     messages = [system_prompt] + message_list
 
     from openai import OpenAI
-
+    soa_key = os.getenv("SOA_KEY")
+    # print(f"key = {soa_key}")
     client = OpenAI(
         base_url="https://openrouter.ai/api/v1",
-        api_key="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",
+        api_key=soa_key,
     )
 
     completion = client.chat.completions.create(
