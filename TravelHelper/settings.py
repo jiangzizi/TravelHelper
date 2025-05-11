@@ -38,9 +38,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'core',
+    'corsheaders'
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -50,7 +52,12 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
+CORS_ALLOWED_ORIGINS=[
+    "https://master.dsc8hjp5let50.amplifyapp.com"
+]
+CORS_ALLOW_CREDENTIALS=True
+CORS_ALLOW_METHODS=["DELETE","GET","OPTIONS","PATCH","POST","PUT"]
+CORS_ALLOW_HEADERS=["accept","authorization","content-type","origin","x-csrftoken"]
 ROOT_URLCONF = 'TravelHelper.urls'
 
 TEMPLATES = [
