@@ -1,11 +1,17 @@
 from django.db import models
 
-class Conversation(models.Model):
-    # conversation_id 改成主键 ID 自动增长
-    # 保持兼容前端传入 str 类型
-    def __str__(self):
-        return f"Conversation {self.id}"
+class User(models.Model):
+    name = models.CharField(max_length=150, unique=True, help_text="User's name")
+    password = models.CharField(max_length=128)
 
+    def __str__(self):
+        return f"USER name: {self.name}"
+
+class Conversation(models.Model):
+    user_id = models.IntegerField(default=-1, help_text="ID of the user this conversation belongs to")
+
+    def __str__(self):
+        return f"Conversation {self.id} (User ID {self.user_id})"
 
 class Message(models.Model):
     ROLE_CHOICES = [
