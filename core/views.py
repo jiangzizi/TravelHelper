@@ -67,10 +67,11 @@ def llm_talk(request):
     else:
         return JsonResponse({"error": "Only POST method is allowed"}, status=405)
 
-
+@csrf_exempt
 def index(request):
     return HttpResponse("Hello from core.index!")
 
+@csrf_exempt
 def llm_talk_testing(request):
     print("calling llm talk")
     return JsonResponse({
