@@ -10,7 +10,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from core.models import Conversation, Message
 from tool.user import user_login, create_user
-
+from tool.travel_post import make_post, get_total_post_by_user_id, like_post, dislike_post, get_all_post
 @csrf_exempt
 def llm_talk(request):
     if request.method == 'POST':
@@ -19,7 +19,7 @@ def llm_talk(request):
             body_data = json.loads(body_unicode)
             user_query = body_data.get('query', '')
             conversation_id_str = body_data.get('conversation_id')
-            user_id = body_data.get('user_id', -1)  # 获取 user_id，默认 -1
+            user_id = body_data.get('user_id', -1)
 
             if conversation_id_str:
                 print(f"there is conversation {conversation_id_str}")
@@ -27,7 +27,6 @@ def llm_talk(request):
                     conversation_id = int(conversation_id_str)
                     conversation = Conversation.objects.get(id=conversation_id)
 
-                    # 检查 user_id 是否匹配
                     if conversation.user_id != user_id:
                         return JsonResponse({"error": "user_id does not match the conversation"}, status=403)
 
@@ -35,7 +34,7 @@ def llm_talk(request):
                     try:
                         conversation_id = int(conversation_id_str)
                         conversation = Conversation(id=conversation_id, user_id=user_id)
-                        conversation.save(force_insert=True)  # 强行指定主键插入
+                        conversation.save(force_insert=True)
                     except ValueError:
                         return JsonResponse({"error": "Invalid conversation_id"}, status=404)
             else:
@@ -43,21 +42,25 @@ def llm_talk(request):
                 conversation = Conversation.objects.create(user_id=user_id)
 
             print(f"conversation id is {conversation.id} user_id is {conversation.user_id}")
-            # 获取已有上下文
             past_messages = Message.objects.filter(conversation=conversation).order_by('index')
             history = [{"role": m.role, "content": m.content} for m in past_messages]
             history.append({"role": "user", "content": user_query})
             print(f"history length is {len(history)}")
 
-            assistant_reply = smart_talk(history)
+            # 在调用智能回复时包一层 try
+            try:
+                assistant_reply = smart_talk(history)
+            except Exception as e:
+                return JsonResponse({"error": f"smart_talk failed: {str(e)}"}, status=500)
 
+            # 仅在成功获取 reply 后才保存
             next_index = past_messages.count()
             Message.objects.create(conversation=conversation, role='user', content=user_query, index=next_index)
             Message.objects.create(conversation=conversation, role='assistant', content=assistant_reply, index=next_index + 1)
 
             return JsonResponse({
                 "llm_content": assistant_reply,
-                "conversation_id": str(conversation.id)  # 注意返回字符串
+                "conversation_id": str(conversation.id)
             })
 
         except json.JSONDecodeError:

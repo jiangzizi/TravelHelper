@@ -30,3 +30,15 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.role} message #{self.index} in conversation {self.conversation.id}"
+
+
+class OpenPost(models.Model):
+    id = models.AutoField(primary_key=True)
+    post_owner_name = models.CharField(max_length=100)
+    post_title = models.CharField(max_length=200)
+    post_content = models.TextField()
+    travel_place = models.CharField(max_length=100, default="")  # 旅行地点
+    like_list = models.JSONField(default=list)  # 存储用户名的 list
+
+    def __str__(self):
+        return f"{self.post_title} by {self.post_owner_name}"

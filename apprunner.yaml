@@ -3,9 +3,6 @@ runtime: python3
 build:
   commands:
     build:
-      - yum install -y gcc gcc-c++ make
-      - yum install -y python3-devel python3-dev
-      - pip install --upgrade pip
       - pip install -r requirements.txt
 run:
   runtime-version: 3.8.16

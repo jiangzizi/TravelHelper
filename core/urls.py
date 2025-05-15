@@ -10,4 +10,9 @@ urlpatterns = [
     path('get_user_conversation_ids', views.get_user_conversation_ids, name = "get_user_conversation_ids"),
     path('create_user', views.create_user, name = 'create_user'),
     path('user_login', views.user_login, name = 'user_login'),
+    path('make_post', views.make_post, name = 'make_post'),
+    path('get_total_post_by_user_id', views.get_total_post_by_user_id, name = 'get_total_post_by_user_id'),
+    path('like_post', views.like_post, name = 'like_post'),
+    path('dislike_post', views.dislike_post, name = 'dislike_post'),
+    path('get_all_post', views.get_all_post, name = 'get_all_post'),
 ]
