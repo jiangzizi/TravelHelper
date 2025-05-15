@@ -39,6 +39,7 @@ def make_post(request):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
+@csrf_exempt
 def get_total_post_by_user_id(request):
     if request.method == 'GET':
         try:
@@ -56,7 +57,10 @@ def get_total_post_by_user_id(request):
             posts = OpenPost.objects.filter(post_owner_name=user.name)
             post_list = [{"post_id": post.id, "post_title": post.post_title, 
                           "travel_place": post.travel_place,
-                          "post_content": post.post_content, "like_list": post.like_list} for post in posts]
+                          "post_content": post.post_content, 
+                          "like_list": post.like_list,
+                            "time_stamp": post.created_at.strftime("%Y-%m-%d %H:%M:%S")
+                          } for post in posts]
             total_posts = len(post_list)
             return JsonResponse({
                 "total_posts": total_posts,
@@ -157,7 +161,8 @@ def get_all_post(request):
             "post_title": post.post_title,
             "post_content": post.post_content,
             "travel_place": post.travel_place,
-            "like_list": post.like_list
+            "like_list": post.like_list,
+            "time_stamp": post.created_at.strftime("%Y-%m-%d %H:%M:%S")
         } for post in posts]
 
         return JsonResponse({

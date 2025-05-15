@@ -31,6 +31,7 @@ class Message(models.Model):
     def __str__(self):
         return f"{self.role} message #{self.index} in conversation {self.conversation.id}"
 
+from django.utils import timezone  # 可选，供后续拓展使用
 
 class OpenPost(models.Model):
     id = models.AutoField(primary_key=True)
@@ -39,6 +40,7 @@ class OpenPost(models.Model):
     post_content = models.TextField()
     travel_place = models.CharField(max_length=100, default="")  # 旅行地点
     like_list = models.JSONField(default=list)  # 存储用户名的 list
+    created_at = models.DateTimeField(default=timezone.now)  # 自动生成时间戳
 
     def __str__(self):
         return f"{self.post_title} by {self.post_owner_name}"
