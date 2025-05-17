@@ -49,7 +49,7 @@ def llm_talk(request):
 
             # 在调用智能回复时包一层 try
             try:
-                assistant_reply = smart_talk(history)
+                assistant_reply = smart_talk(history, basic=False)
             except Exception as e:
                 return JsonResponse({"error": f"smart_talk failed: {str(e)}"}, status=500)
 

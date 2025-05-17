@@ -1,5 +1,25 @@
 from zhipuai import ZhipuAI
 import json
+from praisonaiagents import Agent, Agents, MCP
+import os
+
+brave_api_key = os.getenv("BRAVE_API_KEY")
+# General Search Agent
+general_search_agent = Agent(
+    instructions="Perform general web searches to gather information",
+    llm="groq/llama-3.1-8b-instant",
+    tools=MCP("npx -y @modelcontextprotocol/server-brave-search", env={"BRAVE_API_KEY": brave_api_key})
+)
+
+def general_query(query):
+    """Function to handle travel-related queries"""
+    # Here you can implement the logic to process the query
+    # For example, you can call the agents to get information
+    # and return the results.
+    agents = Agents(agents=[general_search_agent])
+    result = agents.start(query)
+    return result
+
 
 def should_search(message_list):
     """判断是否需要搜索"""
@@ -27,32 +47,30 @@ def should_search(message_list):
     print(f"search decision {decision}")
     return decision == "YES"
 
-import requests
-
 def perform_search(query):
-    api_key = "AIzaSyBCnrHC_z71C_0tgHNzFEuZrdeL27md5CI"
-    cx = "017576662512468239146:omuauf_lfve"
-    search_url = f"https://www.google.com/search?q={query}"
-    
-    try:
-        response = requests.get(search_url)
-        print(response)
-        response.raise_for_status()  # 如果响应失败会抛出异常
-        print(response.json())
-        #return response.json()  # 返回 dict 对象
-    except requests.RequestException as e:
-        print(f"error {str(e)}")
-        #return {"error": str(e)}
-    print("this is a demo research answer")
+    print(f"perform search {query}")
+    """执行搜索"""
+    answer = general_query(query)
+    print(f"search result {answer}")
+    return answer
+
+import re
+
+def keep_after_last_function_tag(s):
+    match = re.search(r'</function>(.*)$', s, re.DOTALL)
+    return match.group(1) if match else ''
 
 def generate_final_response(message_list, search_results=None):
     """生成最终回复"""
     client = ZhipuAI(api_key="0982eaa8f53f4d649e003336000451c5.E5OuhWgc7pAtHeJf")
-    
+    search_results = keep_after_last_function_tag(search_results) if search_results else None
+    print(f"search result for final generation is  {search_results}")
     system_prompt = {
         "role": "system",
         "content": "Your are a helpful assistant."
     }
+
+
     
     # 如果有搜索结果，添加到消息中
     messages = [system_prompt]
@@ -61,7 +79,7 @@ def generate_final_response(message_list, search_results=None):
             "role": "system",
             "content": f"Here is the web search content \n{search_results}\n"
         })
-    
+        
     # 添加历史消息和最新问题
     messages.extend(message_list)
     
@@ -98,6 +116,5 @@ if __name__ == "__main__":
     conversation_history = [
         {"role": "user", "content": "How is the weather in beijing"}
     ]
-    
-    response = smart_talk(conversation_history)
+    response = smart_talk(conversation_history, basic=False)
     print(response)
