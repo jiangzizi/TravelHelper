@@ -107,32 +107,46 @@ def get_user_conversation_ids(request):
     else:
         return JsonResponse({"error": "Only POST method is allowed"}, status=405)
 
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+import json
+from .models import Conversation, Message
+
+
+def filter_message_alternation(messages):
+    """确保消息交替出现：user -> assistant -> user -> assistant"""
+    filtered = []
+    last_role = None
+    for msg in messages:
+        if msg.role == last_role and msg.role == 'user':
+            continue  # 删除连续的第二条 user
+        filtered.append(msg)
+        last_role = msg.role
+    return filtered
+
 
 @csrf_exempt
 def get_conversation_content(request):
     if request.method == 'POST':
         try:
-
             body_unicode = request.body.decode('utf-8')
             body_data = json.loads(body_unicode)
             user_id = body_data.get('user_id', None)
 
             if user_id is None:
                 return JsonResponse({"error": "user_id is required"}, status=400)
-            
+
             print(f"get_conversation_content user_id is {user_id}")
-            # 获取该用户所有的对话
             conversations = Conversation.objects.filter(user_id=user_id)
             if not conversations:
                 return JsonResponse({"error": "No conversations found for this user"}, status=404)
 
-            # 构建返回的结构
             conversation_data = []
 
             for conversation in conversations:
-                # 获取该对话的所有消息
                 messages = Message.objects.filter(conversation=conversation).order_by('index')
-                message_history = [{"role": m.role, "content": m.content} for m in messages]
+                filtered_messages = filter_message_alternation(messages)
+                message_history = [{"role": m.role, "content": m.content} for m in filtered_messages]
 
                 conversation_data.append({
                     "conversation_id": str(conversation.id),
@@ -169,13 +183,12 @@ def get_conversation_content_by_id(request):
             except (ValueError, Conversation.DoesNotExist):
                 return JsonResponse({"error": "Invalid conversation_id"}, status=404)
 
-            # 检查 user_id 是否匹配
             if conversation.user_id != user_id:
                 return JsonResponse({"error": "user_id does not match the conversation"}, status=403)
 
-            # 获取该对话的所有消息
             messages = Message.objects.filter(conversation=conversation).order_by('index')
-            message_history = [{"role": m.role, "content": m.content} for m in messages]
+            filtered_messages = filter_message_alternation(messages)
+            message_history = [{"role": m.role, "content": m.content} for m in filtered_messages]
 
             return JsonResponse({
                 "conversation_id": str(conversation.id),
