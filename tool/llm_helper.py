@@ -3,7 +3,9 @@ import json
 from praisonaiagents import Agent, Agents, MCP
 import os
 
-brave_api_key = os.getenv("BRAVE_API_KEY")
+brave_api_key = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0" #     os.getenv("BRAVE_API_KEY")
+os.environ["BRAVE_API_KEY"] = brave_api_key
+os.environ["GROQ_API_KEY"] = "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"
 # General Search Agent
 general_search_agent = Agent(
     instructions="Perform general web searches to gather information",
@@ -79,7 +81,7 @@ def generate_final_response(message_list, search_results=None):
             "role": "system",
             "content": f"Here is the web search content \n{search_results}\n"
         })
-        
+
     # 添加历史消息和最新问题
     messages.extend(message_list)
     
