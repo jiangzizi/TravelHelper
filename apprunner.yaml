@@ -1,11 +1,20 @@
 version: 1.0
-runtime: python3
+runtime: python311
 build:
   commands:
     build:
-      - pip install -r requirements.txt
+      - python3.11 -m ensurepip --upgrade
+      - pip3 install -r requirements.txt
+    env:
+      - name: DEBUG
+        value: "on"
 run:
-  runtime-version: 3.8.16
+  runtime-version: 3.11
+  pre-run:
+    - pip3 install gunicorn
+    - pip3 install -r requirements.txt
+    - which gunicorn
   command: sh startup.sh
   network:
     port: 8000
+    env: 8000  
