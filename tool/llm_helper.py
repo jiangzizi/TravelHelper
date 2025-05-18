@@ -100,16 +100,16 @@ def smart_talk(message_list, basic = True):
     
     user_query = latest_user_message["content"]
     if basic :
-        return generate_final_response(message_list)
+        return generate_final_response(message_list), "None"
     # 第一步：判断是否需要搜索
     if should_search(message_list):
         # 第二步：如果需要搜索，执行搜索
         search_results = perform_search(user_query)
         # 第三步：结合搜索结果生成最终回复
-        return generate_final_response(message_list, search_results)
+        return generate_final_response(message_list, search_results), search_results
     else:
         # 如果不需要搜索，直接生成回复
-        return generate_final_response(message_list)
+        return generate_final_response(message_list), "None"
 
 # 使用示例
 if __name__ == "__main__":
