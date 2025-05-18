@@ -1,6 +1,6 @@
 from zhipuai import ZhipuAI
 import json
-"""from praisonaiagents import Agent, Agents, MCP
+from praisonaiagents import Agent, Agents, MCP
 import os
 
 brave_api_key = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0" #     os.getenv("BRAVE_API_KEY")
@@ -20,7 +20,7 @@ def general_query(query):
     agents = Agents(agents=[general_search_agent])
     result = agents.start(query)
     return result
-"""
+
 
 def should_search(message_list):
     """判断是否需要搜索"""
@@ -51,7 +51,7 @@ def should_search(message_list):
 def perform_search(query):
     print(f"perform search {query}")
     """执行搜索"""
-    answer = "here is a demo answer" #general_query(query)
+    answer = general_query(query)
     print(f"search result {answer}")
     return answer
 
@@ -59,11 +59,12 @@ import re
 
 def keep_after_last_function_tag(s):
     match = re.search(r'</function>(.*)$', s, re.DOTALL)
-    return match.group(1) if match else ''
+    return match.group(1) if match else s
 
 def generate_final_response(message_list, search_results=None):
     """生成最终回复"""
     client = ZhipuAI(api_key="0982eaa8f53f4d649e003336000451c5.E5OuhWgc7pAtHeJf")
+    print(f"search result for final generation is  {search_results}")
     search_results = keep_after_last_function_tag(search_results) if search_results else None
     print(f"search result for final generation is  {search_results}")
     system_prompt = {
@@ -75,14 +76,12 @@ def generate_final_response(message_list, search_results=None):
     
     # 如果有搜索结果，添加到消息中
     messages = [system_prompt]
+    messages.extend(message_list)
     if search_results:
-        messages.append({
-            "role": "system",
-            "content": f"Here is the web search content \n{search_results}\n"
-        })
+        messages[-1]["content"] += f"\n Answer my question based on below information.\n\n Here is the web search content \n{search_results}\n"
 
     # 添加历史消息和最新问题
-    messages.extend(message_list)
+    print(f"messages for final generation {messages}")
     
     response = client.chat.completions.create(
         model="glm-4-flash",
