@@ -1,11 +1,11 @@
 version: 1.0
-runtime: python311
+runtime: python3
 build:
   commands:
     build:
-      - pip3 install -r requirements.txt
+      - pip install -r requirements.txt
 run:
-  runtime-version: 3.11.12
+  runtime-version: 3.8.16
   command: sh startup.sh
   network:
-    port: 8080
+    port: 8000

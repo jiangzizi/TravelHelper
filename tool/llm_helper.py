@@ -1,6 +1,6 @@
 from zhipuai import ZhipuAI
 import json
-from praisonaiagents import Agent, Agents, MCP
+"""from praisonaiagents import Agent, Agents, MCP
 import os
 
 brave_api_key = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0" #     os.getenv("BRAVE_API_KEY")
@@ -14,14 +14,13 @@ general_search_agent = Agent(
 )
 
 def general_query(query):
-    """Function to handle travel-related queries"""
     # Here you can implement the logic to process the query
     # For example, you can call the agents to get information
     # and return the results.
     agents = Agents(agents=[general_search_agent])
     result = agents.start(query)
     return result
-
+"""
 
 def should_search(message_list):
     """判断是否需要搜索"""
@@ -52,7 +51,7 @@ def should_search(message_list):
 def perform_search(query):
     print(f"perform search {query}")
     """执行搜索"""
-    answer = general_query(query)
+    answer = "here is a demo answer" #general_query(query)
     print(f"search result {answer}")
     return answer
 
