@@ -59,7 +59,7 @@ if __name__ == "__main__":
     budget = "Mid-range (£1000-£1500)"
     preferences = "Historical sites, local cuisine, avoiding crowded tourist traps"
     travel_query = f"What are the best attractions to visit in {destination} during {dates} on a budget of {budget} with preferences of {preferences}?"
-    # agents2 = Agents(agents=[research_agent, flight_agent, hotel_agent, planning_agent])
+    agents = Agents(agents=[research_agent, flight_agent, hotel_agent, planning_agent])
 
     result = agents.start(travel_query)
     print(f"\n=== DESTINATION RESEARCH: {destination} ===\n")

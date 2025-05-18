@@ -15,4 +15,5 @@ urlpatterns = [
     path('like_post', views.like_post, name = 'like_post'),
     path('dislike_post', views.dislike_post, name = 'dislike_post'),
     path('get_all_post', views.get_all_post, name = 'get_all_post'),
+    path('show_lattest_longtitude_latitude', views.show_lattest_longtitude_latitude, name = 'show_lattest_longtitude_latitude'),
 ]
