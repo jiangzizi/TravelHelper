@@ -68,7 +68,7 @@ def generate_final_response(message_list, search_results=None):
     print(f"search result for final generation is  {search_results}")
     system_prompt = {
         "role": "system",
-        "content": "Your are a helpful assistant."
+        "content": "Your are a helpful travel assistant. You can only answer travel related questions."
     }
 
 

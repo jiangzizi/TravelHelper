@@ -13,5 +13,5 @@ run:
     - which gunicorn
   command: sh startup.sh
   network:
-    port: 8000
-    env: 8000  
+    port: 8080
+    env: 8080  
