@@ -1,235 +1,237 @@
 from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
-from core.models import Conversation, Message
+from core.models import Conversation, Message # Assuming these are your Django models
 from zhipuai import ZhipuAI
-from praisonaiagents import Agent, Agents, MCP
-import os, re, json
-from tool.map import *
+from praisonaiagents import Agent, Agents, MCP # Assuming this is correctly set up
+import os
+import re
+import json
+from tool.map import * # Assuming these are not directly used in the provided snippet
 from tool.simple import *
 from tool.conversation import *
 from tool.user import *
 from tool.travel_post import *
 
+# Helper function (already provided)
 def keep_after_last_function_tag(s):
     match = re.search(r'</function>(.*)$', s, re.DOTALL)
     return match.group(1) if match else s
 
+# --- LLM Interaction Functions ---
+
 def should_search(message_list):
     """判断是否需要搜索"""
     client = ZhipuAI(api_key="0982eaa8f53f4d649e003336000451c5.E5OuhWgc7pAtHeJf")
-    
-    # 系统提示，明确告诉模型只需要回答是否需要搜索
     system_prompt = {
         "role": "system",
         "content": """Decide whether you need to call web search function to answer user's query. Only output 'YES' or 'NO'.
-        Output 'YES' if use ask for weather, directions, local food, detailed travel planing, longitude or latitude search  .
+        Output 'YES' if user ask for weather, directions, local food, detailed travel planing, longitude or latitude search.
         """
     }
-
-    # 构建消息列表
-    messages = [system_prompt] + [message_list[-1]]
-    print(f"should search {messages}")
-    
-    response = client.chat.completions.create(
-        model="glm-4-flash",
-        messages=messages,
-        max_tokens=10
-    )
-    
-    decision = response.choices[0].message.content.strip().upper()
-    print(f"search decision {decision}")
-    return decision == "YES"
-
-def perform_search(query):
-    print(f"perform search {query}")
-    """执行搜索"""
-    brave_api_key = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0" #     os.getenv("BRAVE_API_KEY")
-    os.environ["BRAVE_API_KEY"] = brave_api_key
-    os.environ["GROQ_API_KEY"] = "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"
-
-    # General Search Agent
-    general_search_agent = Agent(
-        instructions="Perform general web searches to gather information",
-        llm="groq/meta-llama/llama-4-scout-17b-16e-instruct",
-        tools=MCP("npx -y @modelcontextprotocol/server-brave-search", env={"BRAVE_API_KEY": brave_api_key})
-    )
-    agents = Agents(agents=[general_search_agent])
-    result = agents.start(query)
-    print(f"search result {result}")
-    return result
-
-def extract_longtitude_latitude(query):
-    client = ZhipuAI(api_key="0982eaa8f53f4d649e003336000451c5.E5OuhWgc7pAtHeJf")
-    
-    # 系统提示，明确告诉模型只需要回答是否需要搜索
-    system_prompt = {
-        "role": "system",
-        "content": """Extract longitude and latitude from the query. If there is no longitude and latitude, only output one word 'None'.
-        Otherwise, only output the longitude and latitude in the format of '[longitude,latitude]'.
-        Strictly follow the format. DO NOT add any other content.
-        """
-    }
-
-    # 构建消息列表
-    messages = [system_prompt] + [{"role": "user", "content": "Try to extract longitude and latitude from below content. \n"+query}]
-    
-    response = client.chat.completions.create(
-        model="glm-4-flash",
-        messages=messages,
-        max_tokens=128
-    )
-    
-    output = response.choices[0].message.content.strip().upper()
-    #print(f"search decision {decision}")
-    print(f"extract longtitude and latitude decision {output}")
-    return output
-
-
-
-def generate_final_response(message_list, search_results=None):
-    print(f"message list for final generation {message_list}")
-    """Generates final reply, yielding chunks if streaming."""
-    client = ZhipuAI(api_key="0982eaa8f53f4d649e003336000451c5.E5OuhWgc7pAtHeJf") # Use your actual key or env var
-    
-    print(f"Search result for final generation (raw): {search_results}")
-    processed_search_results = keep_after_last_function_tag(search_results) if search_results else None
-    print(f"Search result for final generation (processed): {processed_search_results}")
-    
-    system_prompt = {
-        "role": "system",
-        "content": "You are a helpful travel assistant. You can only answer travel related questions."
-    }
-    
     messages = [system_prompt]
-    # Ensure message_list is a list of dictionaries
-    if isinstance(message_list, list) and all(isinstance(item, dict) for item in message_list):
-        messages.extend(message_list)
-    else:
-        print(f"Warning: message_list is not in the expected format: {message_list}")
-        # Potentially handle this error or provide a default
-        # For now, let's assume it might be a single message if not a list.
-        if isinstance(message_list, dict):
-             messages.append(message_list)
+    if message_list: # Ensure message_list is not empty
+        messages.append(message_list[-1]) # Use the last message (current user query)
+    else: # Should not happen if history includes user query
+        return False # Default to NO if no user query found
 
-
-    # Make sure there's at least one user/assistant message to append search results to
-    if not messages or messages[-1]["role"] == "system":
-        # Add a dummy user message if history is empty or ends with system,
-        # so search results can be appended to a user/assistant message.
-        # This might need refinement based on your actual message flow.
-        # Or, if the last message_list item is the user query, use that.
-        # Let's assume message_list always ends with the latest user query if it's not empty.
-        if message_list and message_list[-1]["role"] == "user":
-            # The last message in message_list is the current user query
-             # The content will be updated below
-            pass
-        else:
-            # This case should ideally not happen if message_list is properly constructed
-            print("Warning: Cannot append search results as no suitable message found.")
-
-
-    if processed_search_results:
-        # Append to the content of the last message, which should be the user's query
-        if messages and messages[-1].get("content") is not None:
-            messages[-1]["content"] += f"\n\nAnswer my question based on the following information:\n{processed_search_results}\n"
-        else:
-            # This is a fallback, ideally the message structure should ensure a content field exists
-            messages.append({"role": "user", "content": f"Based on this info: {processed_search_results}, answer."})
-
-
-    print(f"Messages for final generation: {messages}")
-    
+    print(f"should_search messages: {messages}")
     try:
-        print(f"histroy for final generation {messages}")
-        stream = client.chat.completions.create(
+        response = client.chat.completions.create(
             model="glm-4-flash",
             messages=messages,
+            max_tokens=10
+        )
+        decision = response.choices[0].message.content.strip().upper()
+        print(f"Search decision from LLM: {decision}")
+        return decision == "YES"
+    except Exception as e:
+        print(f"Error in should_search: {e}")
+        return False # Default to NO on error
+
+def perform_search(query):
+    print(f"Performing search for query: '{query}'")
+    """执行搜索"""
+    brave_api_key = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0"
+    os.environ["BRAVE_API_KEY"] = brave_api_key
+    # Ensure GROQ_API_KEY is set if your Agent/MCP depends on it internally
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+
+
+    # General Search Agent
+    # Make sure MCP path is correct or it's globally available.
+    # If npx isn't in PATH for the Django process, this could fail.
+    # Consider using a Python library for Brave search directly if praisonaiagents has issues in Django.
+    try:
+        general_search_agent = Agent(
+            role="Web Searcher", # Added role for clarity
+            goal=f"Perform general web searches to gather information for the query: {query}", # Added goal
+            instructions="Perform general web searches to gather information relevant to the user's query. Return concise and relevant search snippets or summaries.",
+            llm="groq/llama3-8b-8192", # Example, adjust as needed; smaller/faster model might be better
+            # llm="groq/meta-llama/llama-4-scout-17b-16e-instruct", # Original
+            tools=[MCP("npx -y @modelcontextprotocol/server-brave-search", env={"BRAVE_API_KEY": brave_api_key})]
+        )
+        agents = Agents(agents=[general_search_agent])
+        result = agents.start(f"Search the web for information related to: {query}") # Make the task very explicit
+        print(f"Raw search result from praisonai: {result}")
+        return result
+    except Exception as e:
+        print(f"Error during perform_search with praisonaiagents: {e}")
+        # Fallback or simpler search mechanism can be added here
+        return f"Error performing search: {e}"
+
+
+def extract_longtitude_latitude(text_to_search_in):
+    print(f"Extracting lat/long from: '{text_to_search_in[:200]}...'") # Log snippet
+    client = ZhipuAI(api_key="0982eaa8f53f4d649e003336000451c5.E5OuhWgc7pAtHeJf")
+    system_prompt = {
+        "role": "system",
+        "content": """Extract longitude and latitude from the provided text. If no valid longitude and latitude are found, output only the word 'None'.
+        Otherwise, output only the longitude and latitude in the format of '[longitude,latitude]', e.g., '[116.4074,39.9042]'.
+        Strictly follow the format. DO NOT add any other content, reasoning, or explanations.
+        """
+    }
+    messages = [
+        system_prompt,
+        {"role": "user", "content": f"Extract longitude and latitude from the following text:\n\n{text_to_search_in}"}
+    ]
+    try:
+        response = client.chat.completions.create(
+            model="glm-4-flash",
+            messages=messages,
+            max_tokens=50 # Increased slightly for safety, but should be short
+        )
+        output = response.choices[0].message.content.strip() # No .upper() needed here
+        print(f"Lat/long extraction output: {output}")
+        # Validate format roughly
+        if re.match(r'^\[-?\d+(\.\d+)?,-?\d+(\.\d+)?\]$', output) or output.upper() == "NONE":
+            return output
+        else:
+            print(f"Warning: Lat/long extraction returned unexpected format: {output}. Defaulting to 'None'.")
+            return "None" # Default to "None" if format is off
+    except Exception as e:
+        print(f"Error in extract_longtitude_latitude: {e}")
+        return "None" # Default to "None" on error
+
+def generate_final_response(message_list, search_results_for_llm=None):
+    print(f"Generating final response. Message list length: {len(message_list)}")
+    client = ZhipuAI(api_key="0982eaa8f53f4d649e003336000451c5.E5OuhWgc7pAtHeJf")
+    
+    processed_search_results = keep_after_last_function_tag(search_results_for_llm) if search_results_for_llm else None
+    
+    system_prompt_content = "You are a helpful travel assistant. You can only answer travel related questions."
+    if processed_search_results:
+        system_prompt_content += f"\n\nUse the following information to answer the user's LATEST query if it is relevant. Do not mention that you are using this information unless it's crucial for context. Focus on the user's direct question.\nInformation:\n{processed_search_results}"
+
+    system_prompt = {"role": "system", "content": system_prompt_content}
+    
+    messages_for_llm = [system_prompt]
+    
+    # Add historical messages, ensuring not to duplicate system prompt or add empty user message
+    if isinstance(message_list, list):
+        messages_for_llm.extend([msg for msg in message_list if msg.get("content")]) # Filter out potential empty messages
+    
+    if not any(msg["role"] == "user" for msg in messages_for_llm):
+         # This case should be rare if message_list is correctly populated with user query
+        print("Warning: No user message found in messages_for_llm for final generation.")
+        yield "I need a user question to respond to."
+        return
+
+    print(f"Messages for final ZhipuAI generation: {json.dumps(messages_for_llm, indent=2)}")
+    
+    try:
+        stream = client.chat.completions.create(
+            model="glm-4-flash",
+            messages=messages_for_llm,
             stream=True,
-            # max_tokens can be set if you want to limit output, but for streaming,
-            # it's often better to let the model decide when to stop or handle it client-side.
         )
         for chunk in stream:
             if chunk.choices[0].delta and chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
     except Exception as e:
-        print(f"Error during ZhipuAI stream: {e}")
-        yield f"An error occurred while generating the response: {str(e)}" # Yield an error message
+        print(f"Error during ZhipuAI stream for final response: {e}")
+        yield f"An error occurred while generating the response: {str(e)}"
 
-def smart_talk(message_list, basic=True):
+# --- Main Orchestration Logic ---
+
+def smart_talk(message_list, basic=False):
     """
-    Intelligent conversation flow, supporting streaming.
-    Yields:
-        - A dictionary with 'type': 'metadata', 'search_result', 'longtitude_latitude'
-        - Dictionaries with 'type': 'content_chunk', 'chunk': (text chunk)
-        - Optionally, 'type': 'done' or 'type': 'error'
+    Intelligent conversation flow, yielding dictionaries for streaming.
+    Types of yielded events:
+    - {"type": "status", "message": "..."}
+    - {"type": "search_decision", "decision": "YES" | "NO"}
+    - {"type": "intermediate_result", "source": "perform_search" | "extract_longtitude_latitude", "content": "..."}
+    - {"type": "llm_chunk", "chunk": "..."}
+    - {"type": "error", "source": "...", "message": "..."}
+    - {"type": "done"}
     """
     latest_user_message = next((msg for msg in reversed(message_list) if msg["role"] == "user"), None)
 
     if not latest_user_message:
-        yield {"type": "content_chunk", "chunk": "Please提出您的问题。"}
+        yield {"type": "error", "source": "smart_talk_setup", "message": "No user query found in message history."}
+        yield {"type": "llm_chunk", "chunk": "Please provide your question."} # Send a fallback message
+        yield {"type": "done"}
         return
 
     user_query = latest_user_message["content"]
     
-    search_result_data = "None"
-    longtitude_latitude_data = "None"
+    # These will store the actual data to be used/saved
+    search_data_for_llm = None
+    final_search_result_for_db = "None"
+    final_long_lat_for_db = "None"
 
     if basic:
-        # Yield metadata first, even if it's "None"
-        yield {
-            "type": "metadata",
-            "search_result": search_result_data,
-            "longtitude_latitude": longtitude_latitude_data
-        }
-        # Then stream the direct answer
-        for chunk in generate_final_response(message_list):
-            yield {"type": "content_chunk", "chunk": chunk}
-        return
+        yield {"type": "status", "message": "Basic mode: Skipping search and location extraction."}
+        # Fallthrough to generate_final_response with no search data
+    else:
+        # Non-basic flow
+        try:
+            search_needed = should_search(message_list)
+            yield {"type": "search_decision", "decision": "YES" if search_needed else "NO"}
 
-    # --- Non-basic flow (with search) ---
-    try:
-        if should_search(message_list):
-            search_result_data = perform_search(user_query)
-            # Potentially, extract_longtitude_latitude could also fail
-            try:
-                longtitude_latitude_data = extract_longtitude_latitude(search_result_data)
-            except Exception as e:
-                print(f"Error extracting lat/long: {e}")
-                longtitude_latitude_data = f"Error: {e}" # Or "None"
-
-            # Yield metadata collected so far
-            yield {
-                "type": "metadata",
-                "search_result": search_result_data, # Send the full search result string
-                "longtitude_latitude": longtitude_latitude_data
-            }
-            # Stream the answer based on search results
-            for chunk in generate_final_response(message_list, search_result_data):
-                yield {"type": "content_chunk", "chunk": chunk}
-        else:
-            # No search needed, yield default metadata
-            yield {
-                "type": "metadata",
-                "search_result": "None", # Explicitly "None"
-                "longtitude_latitude": "None" # Explicitly "None"
-            }
-            # Stream the direct answer without search
-            for chunk in generate_final_response(message_list):
-                yield {"type": "content_chunk", "chunk": chunk}
+            if search_needed:
+                yield {"type": "status", "message": "Performing web search..."}
+                raw_search_output = perform_search(user_query)
+                final_search_result_for_db = raw_search_output # Store for DB
+                search_data_for_llm = raw_search_output     # Store for LLM input
+                yield {"type": "intermediate_result", "source": "perform_search", "content": raw_search_output}
+                
+                yield {"type": "status", "message": "Extracting longitude and latitude..."}
+                # Use raw_search_output as context for extraction, or user_query if more appropriate
+                # The original code used search_result_data (output of perform_search)
+                extracted_location = extract_longtitude_latitude(raw_search_output if raw_search_output else user_query)
+                final_long_lat_for_db = extracted_location # Store for DB
+                yield {"type": "intermediate_result", "source": "extract_longtitude_latitude", "content": extracted_location}
+                # Note: extracted_location is not directly passed to generate_final_response in this setup,
+                # but it's available if the LLM prompt is modified to use it.
+            else:
+                yield {"type": "status", "message": "Search not required for this query."}
         
-        yield {"type": "done"} # Signal completion
+        except Exception as e:
+            err_msg = f"Error during search/geolocation phase: {str(e)}"
+            print(err_msg)
+            yield {"type": "error", "source": "search_processing", "message": err_msg}
+            # Continue, but search_data_for_llm will be None or potentially an error string
+            if search_data_for_llm is None:
+                 search_data_for_llm = f"Note: An error occurred during information retrieval: {e}"
 
-    except Exception as e:
-        print(f"Error in smart_talk's main logic: {e}")
-        # Yield metadata with error if available, or defaults
-        yield {
-            "type": "metadata",
-            "search_result": search_result_data if search_result_data != "None" else f"Error occurred before search: {e}",
-            "longtitude_latitude": longtitude_latitude_data if longtitude_latitude_data != "None" else "Error"
-        }
-        # Yield an error message chunk
-        yield {"type": "error", "message": f"An error occurred: {str(e)}"}
 
+    # This is a conceptual placeholder for where you'd save to DB if not at the very end.
+    # In the current llm_talk, it's saved after all LLM chunks are collected.
+    # We'll pass these to llm_talk to save later.
+    yield {
+        "type": "processing_metadata_for_saving", # Special event type for llm_talk to capture these
+        "db_search_result": final_search_result_for_db,
+        "db_long_lat": final_long_lat_for_db
+    }
+
+    yield {"type": "status", "message": "Generating final assistant response..."}
+    for chunk in generate_final_response(message_list, search_data_for_llm):
+        yield {"type": "llm_chunk", "chunk": chunk}
+    
+    yield {"type": "done"}
+
+
+# --- Django View ---
 
 @csrf_exempt
 def llm_talk(request):
@@ -239,117 +241,125 @@ def llm_talk(request):
             body_data = json.loads(body_unicode)
             user_query = body_data.get('query', '')
             conversation_id_str = body_data.get('conversation_id')
-            user_id = body_data.get('user_id', -1)
+            user_id = body_data.get('user_id', -1) # Default to -1 or handle as error if not provided
 
             if not user_query:
                 return JsonResponse({"error": "Query cannot be empty"}, status=400)
-            # ... (rest of your conversation and user validation) ...
-            
-            # Example of conversation handling (adapt to your actual model usage)
+            if user_id == -1: # Or however you validate user_id
+                 return JsonResponse({"error": "User ID is required"}, status=400)
+
+
             conversation = None
             if conversation_id_str:
                 try:
                     conversation_id = int(conversation_id_str)
                     conversation = Conversation.objects.get(id=conversation_id)
-                    if conversation.user_id != user_id:
-                        return JsonResponse({"error": "User ID does not match the conversation"}, status=403)
+                    if conversation.user_id != user_id: # Ensure user owns the conversation
+                        # For robust multi-user, user_id should come from authenticated session
+                        return JsonResponse({"error": "User ID does not match the conversation owner"}, status=403)
                 except ValueError:
                     return JsonResponse({"error": "Invalid conversation_id format"}, status=400)
                 except Conversation.DoesNotExist:
-                    conversation = Conversation.objects.create(user_id=user_id, id = conversation_id) # Or handle as error
-            else:
+                    # Option 1: Create if not exists (as in original code, but ensure ID consistency)
+                    # If client sends an ID that doesn't exist, it might be an attempt to resume.
+                    # Creating it might be unexpected if the ID was from a deleted convo.
+                    # For now, let's assume if ID is provided, it *should* exist, or it's an error.
+                    # return JsonResponse({"error": "Conversation with provided ID not found"}, status=404)
+                    # OR, create it (as per original, but be careful with ID assignment if client provides it)
+                    print(f"Conversation ID {conversation_id_str} not found. Creating new one for user {user_id} with this ID.")
+                    conversation = Conversation.objects.create(user_id=user_id, id=conversation_id)
+            else: # No conversation_id provided, create a new one
                 conversation = Conversation.objects.create(user_id=user_id)
             
-            print(f"Conversation ID: {conversation.id}, User ID: {user_id}")
+            print(f"Using Conversation ID: {conversation.id}, User ID: {user_id}")
 
             past_messages_qs = Message.objects.filter(conversation=conversation).order_by('index')
             history = [{"role": m.role, "content": m.content} for m in past_messages_qs]
             
-            next_index = past_messages_qs.count()
+            next_index = past_messages_qs.count() # Index for the new user message
             Message.objects.create(conversation=conversation, role='user', content=user_query, index=next_index)
             
-            history.append({"role": "user", "content": user_query})
+            history.append({"role": "user", "content": user_query}) # Add current query to history for smart_talk
 
-            # --- THIS IS THE STREAMING PART ---
+            # --- STREAMING RESPONSE ---
             def stream_response_generator():
                 full_assistant_reply_parts = []
-                # These will be populated by the 'metadata' event from smart_talk
-                search_result_for_db = "None" 
-                longtitude_latitude_for_db = "None"
+                # These will be populated by the 'processing_metadata_for_saving' event
+                captured_search_result_for_db = "None"
+                captured_long_lat_for_db = "None"
 
                 try:
-                    # smart_talk IS A GENERATOR. We iterate over the dicts it yields.
-                    for item in smart_talk(history, basic=False): # 'item' will be a dictionary
-                        if not isinstance(item, dict):
-                            print(f"Warning: smart_talk yielded non-dict item: {item}")
-                            # Handle this unexpected case, maybe yield an error event
-                            error_payload = {"type": "error", "message": f"Internal server error: unexpected stream item format."}
-                            yield f"data: {json.dumps(error_payload)}\n\n"
-                            continue # or break
-
-                        # Now it's safe to use .get() on 'item'
+                    # smart_talk is the generator yielding various event types
+                    for item in smart_talk(history, basic=False): # Set basic=True for testing w/o search
                         item_type = item.get("type")
 
-                        if item_type == "metadata":
-                            search_result_for_db = item.get("search_result", "None")
-                            longtitude_latitude_for_db = item.get("longtitude_latitude", "None")
-                            # Send metadata to client
-                            yield f"data: {json.dumps(item)}\n\n"
-                        elif item_type == "content_chunk":
+                        if item_type == "llm_chunk":
                             chunk_text = item.get("chunk", "")
                             full_assistant_reply_parts.append(chunk_text)
-                            # Send content chunk to client
+                            # Stream this chunk to the client
                             yield f"data: {json.dumps(item)}\n\n"
-                        elif item_type == "error":
+                        elif item_type == "processing_metadata_for_saving":
+                            # This event is for capturing data meant for DB, not directly for client display usually
+                            # But we can still send it if client wants to know
+                            captured_search_result_for_db = item.get("db_search_result", "None")
+                            captured_long_lat_for_db = item.get("db_long_lat", "None")
+                            print(f"Captured for DB: Search='{str(captured_search_result_for_db)[:100]}...', LatLng='{captured_long_lat_for_db}'")
+                            # Optionally stream this metadata if client needs it for some reason
+                            # yield f"data: {json.dumps(item)}\n\n" 
+                            # For now, let's assume client mainly cares about other events.
+                        else: # For "status", "intermediate_result", "error", "done", "search_decision"
+                            # Stream these events directly to the client
                             yield f"data: {json.dumps(item)}\n\n"
-                        elif item_type == "done":
-                            yield f"data: {json.dumps(item)}\n\n"
-                        else:
-                            print(f"Warning: Unknown item type from smart_talk: {item_type}")
-                            # Optionally yield an event for unknown types too
-
-                    # After the loop, save the full assembled reply
+                        
+                    # After the loop, all parts of the assistant's reply are collected
                     assistant_final_reply = "".join(full_assistant_reply_parts)
-                    if assistant_final_reply: # Only save if there's content
+
+                    if assistant_final_reply:
+                        print(f"Saving assistant reply. Length: {len(assistant_final_reply)}")
+                        # Save the assistant's message
+                        # If you want to save search_result and long_lat with the Message object,
+                        # your Message model needs fields for them.
                         Message.objects.create(
                             conversation=conversation,
                             role='assistant',
                             content=assistant_final_reply,
-                            index=next_index + 1
+                            index=next_index + 1 # Index for the assistant message
+                            # search_context=captured_search_result_for_db, # If Message model has this field
+                            # location_info=captured_long_lat_for_db,     # If Message model has this field
                         )
-                        # You could also update the conversation object here with
-                        # search_result_for_db and longtitude_latitude_for_db if needed
-                        print(f"Assistant reply saved. Length: {len(assistant_final_reply)}")
+                        # Alternatively, update the Conversation object if these are per-turn summaries
+                        # conversation.last_search_result = captured_search_result_for_db
+                        # conversation.last_location_info = captured_long_lat_for_db
+                        # conversation.save()
                     else:
-                        print("No assistant reply content to save.")
+                        print("No assistant reply content generated to save.")
 
                 except Exception as e:
-                    print(f"Error during smart_talk stream generation: {e}")
+                    print(f"Error within stream_response_generator or smart_talk: {e}")
                     import traceback
                     traceback.print_exc()
-                    error_payload = {"type": "error", "message": f"Server error during streaming: {str(e)}"}
+                    error_payload = {"type": "error", "source": "stream_generator", "message": f"Server error during streaming: {str(e)}"}
                     yield f"data: {json.dumps(error_payload)}\n\n"
                 finally:
-                    print("Stream generation process finished or errored.")
-                    # A final "stream_end" event can be useful for clients
-                    # yield f"data: {json.dumps({'type': 'stream_end'})}\n\n"
-
+                    print("Stream generation process finished or errored out.")
+                    # Optionally send a specific final "stream_end" event if not relying on "done"
+                    # yield f"data: {json.dumps({'type': 'stream_closed'})}\n\n"
 
             response = StreamingHttpResponse(stream_response_generator(), content_type="text/event-stream")
-            response['Cache-Control'] = 'no-cache'
+            response['Cache-Control'] = 'no-cache' # Important for SSE
+            response['X-Accel-Buffering'] = 'no' # For Nginx, to disable buffering
             return response
 
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON in request body"}, status=400)
         except Exception as e:
-            print(f"Unhandled error in llm_talk view: {e}")
+            print(f"Critical unhandled error in llm_talk view: {e}")
             import traceback
-            traceback.print_exc() # This will print the full traceback to your server console
+            traceback.print_exc()
             return JsonResponse({"error": f"An unexpected server error occurred: {str(e)}"}, status=500)
     else:
         return JsonResponse({"error": "Only POST method is allowed"}, status=405)
 
 @csrf_exempt
-def index(request):
-    return HttpResponse("Hello from core.index!")
-
+def index(request): # Simple test endpoint
+    return HttpResponse("Hello from core.index! The llm_talk endpoint is available for POST requests.")
