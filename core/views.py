@@ -234,6 +234,35 @@ def llm_talk_testing(request):
                          })
 
 
+import requests
+def gaode_geo_info(locations):
+    gaode_result = {}
+    """根据高德地图API获取经纬度"""
+    for item in locations:
+        print(f"item is {item}")
+        print(f"item keys {item.keys()}")
+        location = list(item.keys())[0]  # 正确访问第一个 key
+        url = f"https://restapi.amap.com/v3/geocode/geo?address={location}&key=fc60c58c6d919c5601b52fb5fcaee501"
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            if data['status'] == '1' and data['geocodes']:
+                location_info = data['geocodes'][0]
+                longitude = location_info['location'].split(',')[0]
+                latitude = location_info['location'].split(',')[1]
+                level = location_info['level']
+                print(f"Location: {location}, Longitude: {longitude}, Latitude: {latitude}")
+                gaode_result[location] = {
+                    "longtitude": longitude,
+                    "latitude": latitude,
+                    "level": level
+                }
+            else:
+                print(f"Location: {location} not found.")
+        else:
+            print(f"Error: Unable to fetch data for {location}. Status code: {response.status_code}")
+    return gaode_result
+
 
 @csrf_exempt
 def show_lattest_longtitude_latitude(request):
@@ -311,9 +340,12 @@ def show_lattest_longtitude_latitude(request):
             print(result)
 
             json_result = json.loads(result)
+            gaode_result = gaode_geo_info(json_result)
 
+            print(f"gaode result {gaode_result}")
             return JsonResponse({
                 "llm_content": json_result,
+                "gaode_result": gaode_result
                                 })
         except Exception as e:
             return JsonResponse({"error": f"json decode error: {str(e)}"}, status=500)
