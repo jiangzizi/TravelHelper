@@ -310,8 +310,10 @@ def show_lattest_longtitude_latitude(request):
             # 打印结果
             print(result)
 
+            json_result = json.loads(result)
+
             return JsonResponse({
-                "llm_content": result,
+                "llm_content": json_result,
                                 })
         except Exception as e:
             return JsonResponse({"error": f"json decode error: {str(e)}"}, status=500)
