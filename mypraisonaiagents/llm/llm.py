@@ -344,6 +344,7 @@ class LLM:
 
             start_time = time.time()
             reflection_count = 0
+            tool_result = ""
 
             while True:
                 try:
@@ -562,6 +563,8 @@ class LLM:
                         if reasoning_steps and reasoning_content:
                             return reasoning_content
                         print("i am here 3")
+                        # Return tool result if present
+
                         return response_text, tool_result if tool_result else ""
                     
                     

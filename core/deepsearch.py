@@ -1,4 +1,4 @@
-from praisonaiagents import Agent, Agents, MCP
+from mypraisonaiagents import Agent, Agents, MCP
 import os
 
 def deepsearch():
@@ -16,7 +16,7 @@ def deepsearch():
         tools=MCP("npx -y @modelcontextprotocol/server-brave-search", env={"BRAVE_API_KEY": brave_api_key})
     )
 
-    """# Flight Booking Agent
+    # Flight Booking Agent
     flight_agent = Agent(
         instructions="Search for available flights, compare prices, and recommend optimal flight choices",
         llm="groq/meta-llama/llama-4-scout-17b-16e-instruct",
@@ -35,7 +35,7 @@ def deepsearch():
         instructions="Design detailed day-by-day travel plans incorporating activities, transport, and rest time",
         llm="groq/meta-llama/llama-4-scout-17b-16e-instruct",
         tools=MCP("npx -y @modelcontextprotocol/server-brave-search", env={"BRAVE_API_KEY": brave_api_key})
-    )"""
+    )
 
     # Example usage - research travel destinations
     destination = "London, UK"
@@ -43,13 +43,15 @@ def deepsearch():
     budget = "Mid-range (£1000-£1500)"
     preferences = "Historical sites, local cuisine, avoiding crowded tourist traps"
     travel_query = f"What are the best attractions to visit in {destination} during {dates} on a budget of {budget} with preferences of {preferences}?"
-    agents = Agents(agents=[research_agent
-                            #, flight_agent, hotel_agent, planning_agent
+    agents = Agents(agents=[research_agent, flight_agent, hotel_agent, 
+                            planning_agent
                             ])
 
-    result = agents.start(travel_query)
+    result, tool_call_result = agents.start(travel_query, return_dict = True)
     print(f"\n=== DESTINATION RESEARCH: {destination} ===\n")
     print(result)
+    print("\n=== TOOL CALL RESULT ===\n")
+    print(tool_call_result)
 
 if __name__ == "__main__":
 

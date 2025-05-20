@@ -791,7 +791,7 @@ Your Goal: {self.goal}
 
     def chat(self, prompt, temperature=0.2, tools=None, output_json=None, output_pydantic=None, reasoning_steps=False, stream=True):
         # Log all parameter values when in debug mode
-        #print(f"Agent {self.name} is chatting with prompt: {prompt}")
+        print(f"Agent {self.name} is chatting with prompt: {prompt}")
         if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
             param_info = {
                 "prompt": str(prompt)[:100] + "..." if isinstance(prompt, str) and len(str(prompt)) > 100 else str(prompt),
@@ -824,6 +824,7 @@ Your Goal: {self.goal}
                 prompt = f"{prompt}\n\nKnowledge: {knowledge_content}"
 
         if self._using_custom_llm:
+            print("i am here 9")
             try:
                 # Special handling for MCP tools when using provider/model format
                 tool_param = self.tools if tools is None else tools
@@ -841,7 +842,7 @@ Your Goal: {self.goal}
                             else:
                                 tool_param = [openai_tool]
                             logging.debug(f"Converted MCP tool: {tool_param}")
-                
+                print("i am here 9") 
                 # Pass everything to LLM class
                 response_text, tool_result = self.llm_instance.get_response(
                     prompt=prompt,
@@ -863,7 +864,8 @@ Your Goal: {self.goal}
                     execute_tool_fn=self.execute_tool,  # Pass tool execution function
                     reasoning_steps=reasoning_steps
                 )
-                print(f"i am here 5 with {tool_result}")
+                print("i am here 7")
+                print(f"i am here 5 with {tool_result if tool_result else None}")
 
                 self.chat_history.append({"role": "user", "content": prompt})
                 self.chat_history.append({"role": "assistant", "content": response_text})
@@ -873,7 +875,7 @@ Your Goal: {self.goal}
                     total_time = time.time() - start_time
                     logging.debug(f"Agent.chat completed in {total_time:.2f} seconds")
 
-                return response_text, tool_result
+                return response_text, tool_result if tool_result else None
             except Exception as e:
                 display_error(f"Error in LLM chat: {e}")
                 return None
@@ -916,7 +918,7 @@ Your Goal: {self.goal}
             final_response_text = None
             reflection_count = 0
             start_time = time.time()
-
+            print("i am here 8")
             while True:
                 try:
                     if self.verbose:
@@ -981,13 +983,7 @@ Your Goal: {self.goal}
 
                     # Handle output_json or output_pydantic if specified
                     if output_json or output_pydantic:
-                        # Add to chat history and return raw response
-                        self.chat_history.append({"role": "user", "content": original_prompt})
-                        self.chat_history.append({"role": "assistant", "content": response_text})
-                        if self.verbose:
-                            display_interaction(original_prompt, response_text, markdown=self.markdown, 
-                                             generation_time=time.time() - start_time, console=self.console)
-                        return response_text
+                        pass
 
                     if not self.self_reflect:
                         self.chat_history.append({"role": "user", "content": original_prompt})
@@ -998,6 +994,8 @@ Your Goal: {self.goal}
                         # Return only reasoning content if reasoning_steps is True
                         if reasoning_steps and hasattr(response.choices[0].message, 'reasoning_content'):
                             return response.choices[0].message.reasoning_content
+                        
+                        print(f"i am here 7")
                         return response_text
 
                     reflection_prompt = f"""

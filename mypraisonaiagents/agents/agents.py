@@ -669,13 +669,20 @@ Context:
                 output_pydantic=task.output_pydantic
             )
         else:
-            agent_output, tool_result = executor_agent.chat(
+            output = executor_agent.chat(
                 task_prompt,
                 tools=task.tools,
                 output_json=task.output_json,
                 output_pydantic=task.output_pydantic,
                 stream=self.stream,
             )
+            print(f"here {output}")
+            if isinstance(output, tuple) and len(output) == 2:
+                agent_output, tool_result = output
+            else:
+                agent_output = output
+                tool_result = None
+        print(f"here i get agent output and tool result: {agent_output} {tool_result}")
 
         if agent_output:
             # Store the response in memory
@@ -719,10 +726,10 @@ Context:
                     logger.debug(f"Output that failed Pydantic parsing: {agent_output}")
 
             task.result = task_output
-            return task_output
+            return task_output, tool_result if tool_result else None
         else:
             task.status = "failed"
-            return None
+            return None, None
 
     def run_task(self, task_id):
         """Synchronous version of run_task method"""
@@ -738,7 +745,8 @@ Context:
         while task.status != "completed" and retries < self.max_retries:
             logger.debug(f"Attempt {retries+1} for task {task_id}")
             if task.status in ["not started", "in progress"]:
-                task_output = self.execute_task(task_id)
+                task_output, tool_result = self.execute_task(task_id)
+                print(f"here i get task output and tool result: {task_output} {tool_result}")
                 if task_output and self.completion_checker(task, task_output.raw):
                     task.status = "completed"
                     # Run execute_callback for memory operations
@@ -774,6 +782,7 @@ Context:
                         logger.info(f"Task {task_id} not completed, retrying")
                     time.sleep(1)
                     retries += 1
+                return tool_result if tool_result else None
             else:
                 if task.status == "failed":
                     logger.info("Task is failed, resetting to in-progress for another try...")
@@ -794,6 +803,8 @@ Context:
             verbose=self.verbose,
             max_iter=self.max_iter
         )
+
+        tool_call_result = []
         
         if self.process == "workflow":
             #print("Running workflow")
@@ -802,13 +813,15 @@ Context:
         elif self.process == "sequential":
             #print("Running sequential")
             for task_id in process.sequential():
-                self.run_task(task_id)
+                tool_call_result.append(self.run_task(task_id))
         elif self.process == "hierarchical":
             #print("Running hierarchical")
             for task_id in process.hierarchical():
                 if isinstance(task_id, Task):
                     task_id = self.add_task(task_id)
                 self.run_task(task_id)
+        return tool_call_result
+    
 
     def get_task_status(self, task_id):
         if task_id in self.tasks:
@@ -853,13 +866,15 @@ Context:
                     task.context.append(content)
                 
         # Run tasks as before
-        self.run_all_tasks()
+        tool_call_result = self.run_all_tasks()
         
         # Get results
         results = {
             "task_status": self.get_all_tasks_status(),
             "task_results": {task_id: self.get_task_result(task_id) for task_id in self.tasks}
         }
+
+        print(f"here i get total tool call result: {tool_call_result}")
         
         # By default, return only the final agent's response
         if not return_dict:
@@ -872,7 +887,7 @@ Context:
                     return last_result.raw
                     
         # Return full results dict if return_dict is True or if no final result was found
-        return results
+        return results, tool_call_result
 
     def set_state(self, key: str, value: Any) -> None:
         """Set a state value"""
