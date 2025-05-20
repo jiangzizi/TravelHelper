@@ -2,7 +2,6 @@ from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from core.models import Conversation, Message # Assuming these are your Django models
 from zhipuai import ZhipuAI
-from praisonaiagents import Agent, Agents, MCP # Assuming this is correctly set up
 import os
 import re
 import json
@@ -61,6 +60,7 @@ def perform_search(query):
     # Make sure MCP path is correct or it's globally available.
     # If npx isn't in PATH for the Django process, this could fail.
     # Consider using a Python library for Brave search directly if praisonaiagents has issues in Django.
+    from praisonaiagents import Agent, Agents, MCP # Assuming this is correctly set up
     try:
         general_search_agent = Agent(
             role="Web Searcher", # Added role for clarity
@@ -359,11 +359,11 @@ def llm_talk(request):
             return JsonResponse({"error": f"An unexpected server error occurred: {str(e)}"}, status=500)
     else:
         return JsonResponse({"error": "Only POST method is allowed"}, status=405)
-from mypraisonaiagents import Agent, Agents, MCP
+
 import os
 
 def deepsearch():
-
+    from mypraisonaiagents import Agent, Agents, MCP
     brave_api_key = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0"
     os.environ["BRAVE_API_KEY"] = brave_api_key
     # Ensure GROQ_API_KEY is set if your Agent/MCP depends on it internally
