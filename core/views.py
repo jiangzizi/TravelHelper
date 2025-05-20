@@ -71,9 +71,9 @@ def perform_search(query):
             tools=[MCP("npx -y @modelcontextprotocol/server-brave-search", env={"BRAVE_API_KEY": brave_api_key})]
         )
         agents = Agents(agents=[general_search_agent])
-        result = agents.start(f"Search the web for information related to: {query}") # Make the task very explicit
+        result = agents.start(f"Search the web for information related to: {query}", return_dict = True) # Make the task very explicit
         print(f"Raw search result from praisonai: {result}")
-        return result
+        return result["task_results"][0].raw
     except Exception as e:
         print(f"Error during perform_search with praisonaiagents: {e}")
         # Fallback or simpler search mechanism can be added here
