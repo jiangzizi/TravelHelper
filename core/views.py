@@ -53,7 +53,7 @@ def perform_search(query):
     brave_api_key = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0"
     os.environ["BRAVE_API_KEY"] = brave_api_key
     # Ensure GROQ_API_KEY is set if your Agent/MCP depends on it internally
-    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
 
 
     # General Search Agent
@@ -66,8 +66,8 @@ def perform_search(query):
             role="Web Searcher", # Added role for clarity
             goal=f"Perform general web searches to gather information for the query: {query}", # Added goal
             instructions="Perform general web searches to gather information relevant to the user's query. Return concise and relevant search snippets or summaries.",
-            llm="groq/llama3-8b-8192", # Example, adjust as needed; smaller/faster model might be better
-            # llm="groq/meta-llama/llama-4-scout-17b-16e-instruct", # Original
+            # llm="groq/llama3-8b-8192", # Example, adjust as needed; smaller/faster model might be better
+            llm="groq/meta-llama/llama-4-scout-17b-16e-instruct", # Original
             tools=[MCP("npx -y @modelcontextprotocol/server-brave-search", env={"BRAVE_API_KEY": brave_api_key})]
         )
         agents = Agents(agents=[general_search_agent])
