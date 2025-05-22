@@ -1,7 +1,7 @@
 from mypraisonaiagents import Agent, Agents, MCP
 import os
 
-def deepsearch():
+def deepsearcher():
 
     brave_api_key = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0"
     os.environ["BRAVE_API_KEY"] = brave_api_key
@@ -54,4 +54,4 @@ def deepsearch():
 
 if __name__ == "__main__":
 
-    deepsearch()
+    deepsearcher()
