@@ -5,7 +5,6 @@ def deepsearch():
 
     brave_api_key = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0"
     os.environ["BRAVE_API_KEY"] = brave_api_key
-    # Ensure GROQ_API_KEY is set if your Agent/MCP depends on it internally
     os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
 
 

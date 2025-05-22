@@ -8,8 +8,6 @@ from .agents.agents import PraisonAIAgents
 from .task.task import Task
 from .tools.tools import Tools
 from .agents.autoagents import AutoAgents
-from .knowledge.knowledge import Knowledge
-from .knowledge.chunking import Chunking
 from .mcp.mcp import MCP
 from .main import (
     TaskOutput,

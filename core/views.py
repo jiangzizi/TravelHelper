@@ -52,9 +52,7 @@ def perform_search(query):
     """执行搜索"""
     brave_api_key = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0"
     os.environ["BRAVE_API_KEY"] = brave_api_key
-    # Ensure GROQ_API_KEY is set if your Agent/MCP depends on it internally
     os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
-
 
     # General Search Agent
     # Make sure MCP path is correct or it's globally available.
@@ -366,8 +364,6 @@ def deepsearch():
     from mypraisonaiagents import Agent, Agents, MCP
     brave_api_key = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0"
     os.environ["BRAVE_API_KEY"] = brave_api_key
-    # Ensure GROQ_API_KEY is set if your Agent/MCP depends on it internally
-    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
 
 
     # Travel Research Agent
