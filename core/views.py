@@ -53,23 +53,16 @@ def perform_search(query):
     brave_api_key = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0"
     os.environ["BRAVE_API_KEY"] = brave_api_key
     os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
-
-    # General Search Agent
-    # Make sure MCP path is correct or it's globally available.
-    # If npx isn't in PATH for the Django process, this could fail.
-    # Consider using a Python library for Brave search directly if praisonaiagents has issues in Django.
-    from praisonaiagents import Agent, Agents, MCP # Assuming this is correctly set up
+    from mypraisonaiagents import Agent, Agents, MCP # Assuming this is correctly set up
     try:
         general_search_agent = Agent(
-            role="Web Searcher", # Added role for clarity
-            goal=f"Perform general web searches to gather information for the query: {query}", # Added goal
             instructions="Perform general web searches to gather information relevant to the user's query. Return concise and relevant search snippets or summaries.",
             # llm="groq/llama3-8b-8192", # Example, adjust as needed; smaller/faster model might be better
-            llm="groq/meta-llama/llama-4-scout-17b-16e-instruct", # Original
-            tools=[MCP("npx -y @modelcontextprotocol/server-brave-search", env={"BRAVE_API_KEY": brave_api_key})]
+            llm="groq/meta-llama/llama-4-scout-17b-16e-instruct",
+            tools=MCP("npx -y @modelcontextprotocol/server-brave-search", env={"BRAVE_API_KEY": brave_api_key})
         )
         agents = Agents(agents=[general_search_agent])
-        result = agents.start(f"Search the web for information related to: {query}", return_dict = True) # Make the task very explicit
+        result, tool_call = agents.start(f"Search the web for information related to: {query}", return_dict = True) # Make the task very explicit
         print(f"Raw search result from praisonai: {result}")
         return result["task_results"][0].raw
     except Exception as e:
