@@ -55,7 +55,7 @@ def perform_search(query):
         general_search_agent = Agent(
             instructions="Perform general web searches to gather information relevant to the user's query. Return concise and relevant search snippets or summaries.",
             llm="groq/meta-llama/llama-4-scout-17b-16e-instruct", # Original
-            tools=[MCP("npx -y @modelcontextprotocol/server-brave-search", env={"BRAVE_API_KEY": brave_api_key})]
+            tools=MCP("npx -y @modelcontextprotocol/server-brave-search", env={"BRAVE_API_KEY": brave_api_key})
         )
         agents = Agents(agents=[general_search_agent])
         result = agents.start(f"Search the web for information related to: {query}", return_dict = True) # Make the task very explicit
