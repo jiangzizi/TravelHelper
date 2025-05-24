@@ -654,6 +654,7 @@ Your Goal: {self.goal}
     def _chat_completion(self, messages, temperature=0.2, tools=None, stream=True, reasoning_steps=False):
         start_time = time.time()
         logging.debug(f"{self.name} sending messages to LLM: {messages}")
+        # print("calling _chat_completion")
 
         formatted_tools = []
         if tools is None:
@@ -791,7 +792,7 @@ Your Goal: {self.goal}
 
     def chat(self, prompt, temperature=0.2, tools=None, output_json=None, output_pydantic=None, reasoning_steps=False, stream=True):
         # Log all parameter values when in debug mode
-        print(f"Agent {self.name} is chatting with prompt: {prompt}")
+        print(f"Agent {self.name} is chatting with prompt: {prompt} tool : {tools} output_json: {output_json} output_pydantic: {output_pydantic} reasoning_steps: {reasoning_steps}")
         if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
             param_info = {
                 "prompt": str(prompt)[:100] + "..." if isinstance(prompt, str) and len(str(prompt)) > 100 else str(prompt),
@@ -824,8 +825,8 @@ Your Goal: {self.goal}
                 prompt = f"{prompt}\n\nKnowledge: {knowledge_content}"
 
         if self._using_custom_llm:
-            print("i am here 9")
             try:
+                print(f"tool param type is: ", type(self.tools))
                 # Special handling for MCP tools when using provider/model format
                 tool_param = self.tools if tools is None else tools
                 
@@ -835,6 +836,7 @@ Your Goal: {self.goal}
                     if isinstance(tool_param, MCP) and hasattr(tool_param, 'to_openai_tool'):
                         logging.debug("Converting MCP tool to OpenAI format")
                         openai_tool = tool_param.to_openai_tool()
+                        print(f"openai tool: {openai_tool}")
                         if openai_tool:
                             # Handle both single tool and list of tools
                             if isinstance(openai_tool, list):

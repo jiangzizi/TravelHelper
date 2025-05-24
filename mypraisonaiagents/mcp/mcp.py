@@ -370,6 +370,13 @@ class MCP:
             
         # For simplicity, we'll convert the first tool only if multiple exist
         # More complex implementations could handle multiple tools
+        print(f"check if have runner or tools")
+        if not hasattr(self, 'runner'):
+            print("self.runner is not defined")
+        if not hasattr(self.runner, 'tools'):
+            print("self.runner.tools is not defined")
+
+            
         if not hasattr(self, 'runner') or not self.runner.tools:
             logging.warning("No MCP tools available to convert to OpenAI format")
             return None

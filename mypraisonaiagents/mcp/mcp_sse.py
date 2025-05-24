@@ -181,4 +181,5 @@ class SSEMCPClient:
     
     def to_openai_tools(self):
         """Convert all tools to OpenAI format."""
+        print("Converting tools to OpenAI format...")
         return [tool.to_openai_tool() for tool in self.tools] 
