@@ -373,7 +373,7 @@ class MCP:
         if not hasattr(self, 'runner') or not self.runner.tools:
             logging.warning("No MCP tools available to convert to OpenAI format")
             return None
-            
+        print(f"self have {self.runner.tools} tools") 
         # Convert all tools to OpenAI format
         openai_tools = []
         for tool in self.runner.tools:

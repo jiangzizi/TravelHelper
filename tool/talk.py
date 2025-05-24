@@ -49,7 +49,7 @@ def perform_search(query):
     """执行搜索"""
     brave_api_key = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0"
     os.environ["BRAVE_API_KEY"] = brave_api_key
-    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     from praisonaiagents import Agent, Agents, MCP # Assuming this is correctly set up
     try:
         general_search_agent = Agent(
