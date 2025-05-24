@@ -32,6 +32,7 @@ class MCPToolRunner(threading.Thread):
     async def _run_async(self):
         """Async entry point for MCP operations."""
         try:
+            print("Initializing MCP session...")
             # Set up MCP session
             async with stdio_client(self.server_params) as (read, write):
                 async with ClientSession(read, write) as session:
@@ -71,6 +72,7 @@ class MCPToolRunner(threading.Thread):
                         except asyncio.CancelledError:
                             break
         except Exception as e:
+            print(f"Error in MCP session: {str(e)}")
             self.initialized.set()  # Ensure we don't hang
             self.result_queue.put((False, f"MCP initialization error: {str(e)}"))
     
