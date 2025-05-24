@@ -373,8 +373,12 @@ class MCP:
         print(f"check if have runner or tools")
         if not hasattr(self, 'runner'):
             print("self.runner is not defined")
+        else:
+            print(f"self.runner is defined: {self.runner}")
         if not hasattr(self.runner, 'tools'):
             print("self.runner.tools is not defined")
+        else:
+            print(f"self.runner.tools is defined: {self.runner.tools}")
 
             
         if not hasattr(self, 'runner') or not self.runner.tools:
