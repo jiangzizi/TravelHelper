@@ -227,7 +227,6 @@ class MCP:
         self.runner = MCPToolRunner(self.server_params)
         print(f"self.runner这里: {self.runner}")
         print(f"self.runner.tools: {self.runner.tools}")
-        self.runner.run()
         
         # Wait for initialization
         if not self.runner.initialized.wait(timeout=30):
