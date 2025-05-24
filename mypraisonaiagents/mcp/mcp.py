@@ -211,12 +211,16 @@ class MCP:
         
         # Set up stdio client
         self.is_sse = False
+        print(f"cmd: {cmd}")
+        print(f"arguments: {arguments}")
         self.server_params = StdioServerParameters(
             command=cmd,
             args=arguments,
             **kwargs
         )
+        print(f"self.server_params: {self.server_params}")
         self.runner = MCPToolRunner(self.server_params)
+        print(f"self.runner这里: {self.runner}")
         
         # Wait for initialization
         if not self.runner.initialized.wait(timeout=30):
