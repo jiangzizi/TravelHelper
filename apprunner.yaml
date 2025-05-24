@@ -5,6 +5,11 @@ build:
     build:
       - python3.11 -m ensurepip --upgrade
       - pip3 install -r requirements.txt
+      - yum install -y nodejs
+      - node -v
+      - npx -v
+      - python3 --version
+      - pip3 --version
 run:
   runtime-version: 3.11
   pre-run:
