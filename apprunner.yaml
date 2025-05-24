@@ -16,7 +16,7 @@ run:
     - pip3 install gunicorn
     - pip3 install -r requirements.txt
     - which gunicorn
-  command: sh startup.sh
+  command: bash startup.sh
   network:
     port: 8080
     env: 8080  
