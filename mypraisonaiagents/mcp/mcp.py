@@ -40,7 +40,10 @@ class MCPToolRunner(threading.Thread):
                     
                     # Get tools
                     tools_result = await session.list_tools()
+                    print("赋值中")
+                    print(f"tools_result: {tools_result}")
                     self.tools = tools_result.tools
+                    print(f"self.tools: {self.tools}")
                     
                     # Signal that initialization is complete
                     self.initialized.set()
@@ -221,6 +224,7 @@ class MCP:
         print(f"self.server_params: {self.server_params}")
         self.runner = MCPToolRunner(self.server_params)
         print(f"self.runner这里: {self.runner}")
+        print(f"self.runner.tools: {self.runner.tools}")
         
         # Wait for initialization
         if not self.runner.initialized.wait(timeout=30):
