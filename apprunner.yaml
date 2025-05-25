@@ -6,7 +6,9 @@ build:
       - python3.11 -m ensurepip --upgrade
       - pip3 install -r requirements.txt
       - yum install -y nodejs
+      - npm install @modelcontextprotocol/server-brave-search
       - node -v
+      - npm -v
       - npx -v
       - python3 --version
       - pip3 --version
@@ -19,4 +21,4 @@ run:
   command: bash startup.sh
   network:
     port: 8080
-    env: 8080  
+    env: 8080
