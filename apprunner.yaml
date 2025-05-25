@@ -9,6 +9,8 @@ build:
       - npm install @modelcontextprotocol/server-brave-search
       - node -v
       - npm -v
+      - echo $PATH
+      - pwd
       - npx -v
       - python3 --version
       - pip3 --version
