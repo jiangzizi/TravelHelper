@@ -1,6 +1,7 @@
 #!/bin/bash
 # python manage.py collectstatic --noinput
 source ~/.bashrc
+yum install -y nodejs
 echo $PATH
 npx -v
 pwd
