@@ -44,3 +44,24 @@ class OpenPost(models.Model):
 
     def __str__(self):
         return f"{self.post_title} by {self.post_owner_name}"
+
+
+from django.db import models
+# from django.contrib.postgres.fields import JSONField  # 如果是 PostgreSQL
+# 对于非 PostgreSQL 数据库（如 SQLite），用 models.JSONField（Django 3.1+）
+
+class DeepSearchConversation(models.Model):
+    conversationid = models.CharField(max_length=64, unique=True)
+    user_id = models.IntegerField()
+    destination = models.CharField(max_length=128)
+    budget = models.CharField(max_length=128)
+    dates = models.CharField(max_length=128)
+    preferences = models.TextField()
+
+    tool_results = models.JSONField(null=True, blank=True)  # 复杂结构，用 JSON 存
+    agent_results = models.JSONField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Conversation {self.conversationid} for User {self.user_id}"

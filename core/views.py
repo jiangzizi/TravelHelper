@@ -2,6 +2,7 @@ from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from core.models import Conversation, Message # Assuming these are your Django models
 from zhipuai import ZhipuAI
+from core.models import DeepSearchConversation
 import os
 import re
 import json
@@ -91,56 +92,69 @@ def answer_deepsearch(request):
             dates = body_data.get('dates', '')
             budget = body_data.get('budget', '')
             preferences = body_data.get('preferences', '')
+            user_id = body_data.get('user_id', 3)  # 新增：接收 user_id
+            conversationid = body_data.get('conversationid', "0")  # 新增：接收 conversationid
 
             if not destination or not dates or not budget or not preferences:
                 return JsonResponse({"error": "Query cannot be empty"}, status=400)
 
-            # Call the deepsearch function here
-            result, tool_call_result = deepsearch(destination= destination, budget= budget,
-                                                  dates= dates, preferences= preferences)  # Assuming this is a function defined in your code
+            # Step 1: Call deepsearch
+            result, tool_call_result = deepsearch(destination=destination, budget=budget,
+                                                  dates=dates, preferences=preferences)
 
+            # Step 2: Format agent results
             agent_size = len(result["task_results"])
-
             agent_results = []
             for i in range(agent_size):
-                agent_results.append({"llm_output": result["task_results"][i].raw, "llm_input": result["task_results"][i].description})
-                # print(f"Agent {i} result: {result['task_results'][i].raw}")
+                agent_results.append({
+                    "llm_output": result["task_results"][i].raw,
+                    "llm_input": result["task_results"][i].description
+                })
 
+            # Step 3: Parse tool results
             def parse_search_results(results_str):
-                # 先按两个换行拆分成多条结果
                 raw_results = results_str.strip().split("\n\n")
                 parsed_results = []
-
                 for res in raw_results:
-                    # 每条结果按行拆
                     lines = res.split("\n")
                     entry = {}
                     for line in lines:
-                        # 每行按冒号分成 key 和 value
                         if ": " in line:
                             key, value = line.split(": ", 1)
-                            # key 统一转小写方便用，比如 title, description, url
                             entry[key.lower()] = value
                     if entry:
                         parsed_results.append(entry)
                 return parsed_results
 
-
             tool_results = []
-
             for i in range(len(tool_call_result)):
                 if tool_call_result[i]:
                     parsed = parse_search_results(tool_call_result[i])
                     tool_results.append(parsed)
                 else:
-                    tool_results.append(None)  # 直接用 None 类型，别用字符串 "None"
+                    tool_results.append(None)
 
+            # Step 4: Save into DB
+            conv = DeepSearchConversation.objects.create(
+                conversationid=conversationid, #or str(uuid.uuid4()),  # 如果没传就生成一个 UUID
+                user_id=user_id or 0,
+                destination=destination,
+                budget=budget,
+                dates=dates,
+                preferences=preferences,
+                tool_results=tool_results,
+                agent_results=agent_results
+            )
 
-            print("all is fine")
-            return JsonResponse({"message": "Deep search completed successfully.",
-                                 "tool_results": tool_results,
-                                 "agent_results": agent_results,
-                                 })
+            print("Conversation saved:", conv.id)
+
+            # Step 5: Return response
+            return JsonResponse({
+                "message": "Deep search completed successfully.",
+                "tool_results": tool_results,
+                "agent_results": agent_results
+            })
+
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON in request body"}, status=400)
         except Exception as e:
@@ -148,6 +162,54 @@ def answer_deepsearch(request):
             return JsonResponse({"error": f"An unexpected server error occurred: {str(e)}"}, status=500)
     else:
         return JsonResponse({"error": "Only POST method is allowed"}, status=405)
+
+
+@csrf_exempt
+def get_deepsearch_conversation_ids_by_user(request):
+    if request.method == 'GET':
+        user_id = request.GET.get('user_id')
+        if not user_id:
+            return JsonResponse({"error": "Missing user_id"}, status=400)
+        
+        try:
+            conversations = DeepSearchConversation.objects.filter(user_id=user_id)
+            ids = [conv.conversationid for conv in conversations]
+            return JsonResponse({"conversation_ids": ids}, status=200)
+        except Exception as e:
+            print(f"Error fetching conversations: {e}")
+            return JsonResponse({"error": str(e)}, status=500)
+    else:
+        return JsonResponse({"error": "Only GET method is allowed"}, status=405)
+
+from django.core.serializers.json import DjangoJSONEncoder
+
+@csrf_exempt
+def get_deepsearch_conversation_by_id(request):
+    if request.method == 'GET':
+        conversationid = request.GET.get('conversationid')
+        if not conversationid:
+            return JsonResponse({"error": "Missing conversationid"}, status=400)
+        
+        try:
+            conv = DeepSearchConversation.objects.get(conversationid=conversationid)
+            data = {
+                "conversationid": conv.conversationid,
+                "user_id": conv.user_id,
+                "destination": conv.destination,
+                "budget": conv.budget,
+                "dates": conv.dates,
+                "preferences": conv.preferences,
+                "tool_results": conv.tool_results,
+                "agent_results": conv.agent_results,
+            }
+            return JsonResponse(data, status=200)
+        except DeepSearchConversation.DoesNotExist:
+            return JsonResponse({"error": "Conversation not found"}, status=404)
+        except Exception as e:
+            print(f"Error fetching conversation: {e}")
+            return JsonResponse({"error": str(e)}, status=500)
+    else:
+        return JsonResponse({"error": "Only GET method is allowed"}, status=405)
 
 
 @csrf_exempt
