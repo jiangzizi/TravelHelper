@@ -20,7 +20,7 @@ def deepsearch(destination="Beijing, China", dates="August 15-22, 2025", budget=
     from mypraisonaiagents import Agent, Agents, MCP
     brave_api_key = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0"
     os.environ["BRAVE_API_KEY"] = brave_api_key
-    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
 
     # 判断输入是否为中文
     def is_chinese(text):
