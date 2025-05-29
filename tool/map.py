@@ -2,7 +2,7 @@ import os
 import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from core.models import Conversation, Message
+from core.models import Conversation, Message, DeepSearchConversation
 from praisonaiagents import Agent, Agents, MCP
 
 import requests
@@ -122,3 +122,84 @@ def show_lattest_longtitude_latitude(request):
             return JsonResponse({"error": f"json decode error: {str(e)}"}, status=500)
     else:
         return JsonResponse({"error": "Only POST method is allowed"}, status=405)
+    
+
+
+
+
+
+@csrf_exempt
+def show_lattest_deepsearch_longtitude_latitude(request):
+    if request.method == 'POST':
+        try:
+            body_unicode = request.body.decode('utf-8')
+            body_data = json.loads(body_unicode)
+            conversation_id = body_data.get('conversation_id')
+            #user_id = body_data.get('user_id', -1)
+
+            if not conversation_id:
+                return JsonResponse({"error": "conversation_id is required"}, status=400)
+
+            try:
+                conversation = DeepSearchConversation.objects.get(conversationid=conversation_id)
+            except DeepSearchConversation.DoesNotExist:
+                return JsonResponse({"error": "Conversation not found"}, status=404)
+            agent_results = conversation.agent_results or []
+            if not agent_results:
+                return JsonResponse({"error": "No agent_results found"}, status=404)
+
+            latest_llm_output = agent_results[-1].get("llm_output", "")
+            if not latest_llm_output:
+                return JsonResponse({"error": "llm_output not found in latest agent_result"}, status=404)
+
+            print(f"Latest llm_output: {latest_llm_output}")
+
+            os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+            google_map_agent = Agent(
+                instructions="Perform map search to gather information",
+                llm="groq/meta-llama/llama-4-scout-17b-16e-instruct",
+                tools=MCP("npx -y @modelcontextprotocol/server-google-maps", env={
+                    "GOOGLE_MAPS_API_KEY": "AIzaSyD8kz0EW1KKo8B3I8GU7nAy19R8S6X6RVE"
+                })
+            )
+
+            agents = Agents(agents=[google_map_agent])
+
+            prompt = f"""
+            Extract all location names from the following text, then search for their longtitude and lantitude.
+
+            If a location does not have a pair of coordinates, ignore it.
+
+            Output the result strictly as a JSON list. Each item in the list should be a JSON object in the format:  
+            {{ "location_name": [longitude, latitude] }}  
+            Do not include any other text, explanation, or comments. Only return the JSON list.
+
+            Example input:  
+            "I want to visit Beijing and Shanghai."
+
+            Example output:  
+            [
+            {{ "Beijing": [116.4074, 39.9042] }},
+            {{ "Shanghai": [121.4737, 31.2304] }}
+            ]
+
+            Now process the following input:  
+            {latest_llm_output}
+            """
+
+            result = agents.start(prompt)
+
+            print(f"LLM raw result: {result}")
+
+            json_result = json.loads(result)
+            gaode_result = gaode_geo_info(json_result)
+
+            return JsonResponse({
+                "llm_content": json_result,
+                "gaode_result": gaode_result
+            })
+
+        except Exception as e:
+            return JsonResponse({"error": f"Internal server error: {str(e)}"}, status=500)
+    else:
+        return JsonResponse({"error": "Only POST method is allowed"}, status=405) 

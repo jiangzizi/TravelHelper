@@ -19,4 +19,5 @@ urlpatterns = [
     path('answer_deepsearch', views.answer_deepsearch, name = 'answer_deepsearch'),
     path('get_deepsearch_conversation_ids_by_user', views.get_deepsearch_conversation_ids_by_user, name = 'get_deepsearch_conversation_ids_by_user'),
     path('get_deepsearch_conversation_by_id', views.get_deepsearch_conversation_by_id, name = 'get_deepsearch_conversation_by_id'),
+    path('show_lattest_deepsearch_longtitude_latitude', views.show_lattest_deepsearch_longtitude_latitude, name = 'show_lattest_deepsearch_longtitude_latitude'),
 ]
