@@ -16,14 +16,16 @@ from tool.talk import *
 import os
 import re
 
-def deepsearch(destination="Beijing, China", dates="August 15-22, 2025", budget="sufficient", preferences="no specific preferences"):
+def deepsearch(destination="Beijing, China", dates="August 15-22, 2025", budget="sufficient", preferences="no specific preferences", startpoint="from Beijing, China"):
     from mypraisonaiagents import Agent, Agents, MCP
     brave_api_key = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0"
     os.environ["BRAVE_API_KEY"] = brave_api_key
     os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
-
+    os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "AIzaSyBh2w64uOFq6AFJFo1BVOy6znh-2C93_38")
+    os.environ["OPENROUTER_API_KEY"] = os.getenv("OPENROUTER_API_KEY", "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")
     # 判断输入是否为中文
     def is_chinese(text):
+        return False
         return re.search(r'[\u4e00-\u9fff]', text) is not None
 
     # 中文还是英文提示词
@@ -36,7 +38,7 @@ def deepsearch(destination="Beijing, China", dates="August 15-22, 2025", budget=
             "planning": "请制定一个详细的逐日旅行计划，包含活动安排、交通和休息时间"
         }
     else:
-        travel_query = f"Make a travel plan for me in {destination} during {dates} on a budget of {budget} with preferences of {preferences}."
+        travel_query = f"Make a travel plan for me in {destination} during {dates} on a budget of {budget} with preferences of {preferences}. I am currently in {startpoint}."
         instruction_map = {
             "research": "Research about travel destinations, attractions, local customs, and travel requirements",
             "flight": "Search for available flights, compare prices, and recommend optimal flight choices",
@@ -92,6 +94,7 @@ def answer_deepsearch(request):
             dates = body_data.get('dates', '')
             budget = body_data.get('budget', '')
             preferences = body_data.get('preferences', '')
+            startpoint = body_data.get('startpoint', 'from Beijing, China')  # 新增：接收 startpoint
             user_id = body_data.get('user_id', 3)  # 新增：接收 user_id
             conversationid = body_data.get('conversationid', "0")  # 新增：接收 conversationid
 
@@ -100,7 +103,7 @@ def answer_deepsearch(request):
 
             # Step 1: Call deepsearch
             result, tool_call_result = deepsearch(destination=destination, budget=budget,
-                                                  dates=dates, preferences=preferences)
+                                                  dates=dates, preferences=preferences, startpoint=startpoint)
 
             # Step 2: Format agent results
             agent_size = len(result["task_results"])
