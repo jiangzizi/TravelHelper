@@ -23,45 +23,16 @@ def deepsearch(destination="Beijing, China", dates="August 15-22, 2025", budget=
     os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "AIzaSyBh2w64uOFq6AFJFo1BVOy6znh-2C93_38")
     os.environ["OPENROUTER_API_KEY"] = os.getenv("OPENROUTER_API_KEY", "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")
-    os.environ["DUFFEL_ACCESS_TOKEN"] = "duffel_test_Li5UOd_hOzpiAwxv3GLp4lQ23Y8bkaXo86R216FMgD-"
-    # 判断输入是否为中文
-    def is_chinese(text):
-        return False
-        return re.search(r'[\u4e00-\u9fff]', text) is not None
 
-    # 中文还是英文提示词
-    if is_chinese(destination + preferences + dates + budget):
-        travel_query = f"请帮我制定一个{dates}在{destination}的旅行计划，预算是{budget}，偏好是：{preferences}。"
-        instruction_map = {
-            "research": "请研究旅行目的地、景点推荐、当地习俗和出入境要求",
-            "flight": "请搜索可用航班、比较票价并推荐最优航班方案",
-            "hotel": "请根据预算和偏好搜索住宿酒店",
-            "planning": "请制定一个详细的逐日旅行计划，包含活动安排、交通和休息时间"
-        }
-    else:
-        travel_query = f"Make a travel plan for me in {destination} during {dates} on a budget of {budget} with preferences of {preferences}. I am currently in {startpoint}."
-        instruction_map = {
-            "research": "Research about travel destinations, attractions, local customs, and travel requirements",
-            "flight": "Search for available flights, compare prices, and recommend optimal flight choices",
-            "hotel": "Research hotels and accommodation based on budget and preferences",
-            "planning": "Design detailed day-by-day travel plans incorporating activities, transport, and rest time"
-        }
+    travel_query = f"Make a travel plan for me in {destination} during {dates} on a budget of {budget} with preferences of {preferences}. I am currently in {startpoint}."
+    instruction_map = {
+        "research": "Research about travel destinations, attractions, local customs, and travel requirements",
+        "planning": "Design detailed day-by-day travel plans incorporating activities, transport, and rest time"
+    }
 
     # 各代理初始化
     research_agent = Agent(
         instructions=instruction_map["research"],
-        llm="groq/meta-llama/llama-4-scout-17b-16e-instruct",
-        tools=MCP("npx -y @modelcontextprotocol/server-brave-search", env={"BRAVE_API_KEY": brave_api_key})
-    )
-
-    flight_agent = Agent(
-        instructions=instruction_map["flight"],
-        llm="groq/meta-llama/llama-4-scout-17b-16e-instruct",
-        tools = MCP("python3 core/flight_mcp.py")
-    )
-
-    hotel_agent = Agent(
-        instructions=instruction_map["hotel"],
         llm="groq/meta-llama/llama-4-scout-17b-16e-instruct",
         tools=MCP("npx -y @modelcontextprotocol/server-brave-search", env={"BRAVE_API_KEY": brave_api_key})
     )
@@ -72,9 +43,7 @@ def deepsearch(destination="Beijing, China", dates="August 15-22, 2025", budget=
         tools=MCP("npx -y @modelcontextprotocol/server-brave-search", env={"BRAVE_API_KEY": brave_api_key})
     )
 
-    agents = Agents(agents=[
-        research_agent, flight_agent, hotel_agent, planning_agent
-    ])
+    agents = Agents(agents=[research_agent, planning_agent])
 
     result, tool_call_result = agents.start(travel_query, return_dict=True)
     print(f"\n=== DESTINATION RESEARCH: {destination} ===\n")
@@ -83,6 +52,60 @@ def deepsearch(destination="Beijing, China", dates="August 15-22, 2025", budget=
     print(tool_call_result)
     return result, tool_call_result
 
+def airplane(start_date, end_date, startpoint, destination):
+    from mypraisonaiagents import Agent, Agents, MCP
+    os.environ["BRAVE_API_KEY"] = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0"
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "AIzaSyBh2w64uOFq6AFJFo1BVOy6znh-2C93_38")
+    os.environ["OPENROUTER_API_KEY"] = os.getenv("OPENROUTER_API_KEY", "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")
+    os.environ["DUFFEL_ACCESS_TOKEN"] = "duffel_test_Li5UOd_hOzpiAwxv3GLp4lQ23Y8bkaXo86R216FMgD-"
+
+    judge_need_plane_agent = Agent(
+        instructions="Judge whether a flight is needed based on the start date, end date, startpoint, and destination. If a flight is needed, output YES. Otherwise, output NO.",
+        llm="groq/meta-llama/llama-4-scout-17b-16e-instruct",
+    )
+    judge_need_plane = judge_need_plane_agent.start(
+        f"Do I need a flight from {startpoint} to {destination} between {start_date} and {end_date}?")
+    
+    print(f"Need flight: {judge_need_plane}")
+    if "yes" in judge_need_plane[0].lower():
+        flight_agent = Agent(
+            instructions="Search for available flights, compare prices, and recommend optimal flight choices.",
+            llm="groq/meta-llama/llama-4-scout-17b-16e-instruct",
+            tools=MCP("python3 core/flight_mcp.py")
+        )
+
+        result1, tool_call_result1 = flight_agent.start(
+            f"Find flights from {startpoint} to {destination} on {start_date}")
+        result2, tool_call_result2 = flight_agent.start(
+            f"Find flights from {destination} to {startpoint} on {end_date}")
+        
+        # print(f"\n=== FLIGHT SEARCH RESULT ===\n{result1} \n {tool_call_result1}")
+
+        total_result = {
+            "llm_output": f"From {startpoint} to {destination} flight \n{result1}\n\n From {destination} to {startpoint}\n {result2}",
+            "tool_call_result": f"From {startpoint} to {destination} flight toolcall\n {tool_call_result1} \n\n From {destination} to {startpoint} flight toolcall\n {tool_call_result2}"
+        }
+        print(f"\n=== TOTAL FLIGHT SEARCH RESULT ===\n{total_result}")
+        return total_result
+    else:
+        return {"message": "No flight needed."}
+
+
+def summary(agent_results):
+    from mypraisonaiagents import Agent, Agents
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    
+    summary_agent = Agent(
+        instructions="Summarize the travel plan based on the agent results and flight information. Select the most appropriate flight options and provide a concise summary of the travel plan.",
+        llm="groq/meta-llama/llama-4-scout-17b-16e-instruct"
+    )
+    
+    # Combine all agent outputs into a single string
+    combined_results = "\n".join([result["llm_output"] for result in agent_results])
+    
+    summary_result = summary_agent.start(combined_results)
+    return summary_result
 
 
 @csrf_exempt
@@ -99,13 +122,17 @@ def answer_deepsearch(request):
             user_id = body_data.get('user_id', 3)  # 新增：接收 user_id
             conversationid = body_data.get('conversationid', "0")  # 新增：接收 conversationid
 
+            start_data, end_data = dates.split(",")
+            print(f"Start date: {start_data}, End date: {end_data}")
+            airplane_result = airplane(start_data, end_data, startpoint, destination)
+        
             if not destination or not dates or not budget or not preferences:
                 return JsonResponse({"error": "Query cannot be empty"}, status=400)
 
             # Step 1: Call deepsearch
             result, tool_call_result = deepsearch(destination=destination, budget=budget,
                                                   dates=dates, preferences=preferences, startpoint=startpoint)
-
+            
             # Step 2: Format agent results
             agent_size = len(result["task_results"])
             agent_results = []
@@ -114,7 +141,10 @@ def answer_deepsearch(request):
                     "llm_output": result["task_results"][i].raw,
                     "llm_input": result["task_results"][i].description
                 })
-
+            agent_results.append({
+                "llm_output": airplane_result["llm_output"],
+                "llm_input": f"Find flights from {startpoint} to {destination} on {start_data} and return on {end_data}."
+            })
             # Step 3: Parse tool results
             def parse_search_results(results_str):
                 raw_results = results_str.strip().split("\n\n")
@@ -137,7 +167,13 @@ def answer_deepsearch(request):
                     tool_results.append(parsed)
                 else:
                     tool_results.append(None)
-
+            tool_results.append([{"airplane": airplane_result["tool_call_result"]}])
+            summary_result = summary(agent_results)
+            tool_results.append({})
+            agent_results.append({
+                "llm_output": summary_result,
+                "llm_input": "Summarize the travel plan based on the agent results."
+            })
             # Step 4: Save into DB
             conv = DeepSearchConversation.objects.create(
                 conversationid=conversationid, #or str(uuid.uuid4()),  # 如果没传就生成一个 UUID
