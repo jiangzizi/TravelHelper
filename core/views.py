@@ -169,7 +169,7 @@ def answer_deepsearch(request):
                     tool_results.append(None)
             tool_results.append([{"airplane": airplane_result["tool_call_result"]}])
             summary_result = summary(agent_results)
-            tool_results.append({})
+            tool_results.append([])
             agent_results.append({
                 "llm_output": summary_result[0],
                 "llm_input": "Summarize the travel plan based on the agent results."
