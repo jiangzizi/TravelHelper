@@ -4,35 +4,56 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from core.models import Conversation, Message, DeepSearchConversation
 from praisonaiagents import Agent, Agents, MCP
-
 import requests
-def gaode_geo_info(locations):
-    gaode_result = {}
-    """根据高德地图API获取经纬度"""
-    for item in locations:
-        print(f"item is {item}")
-        print(f"item keys {item.keys()}")
-        location = list(item.keys())[0]  # 正确访问第一个 key
-        url = f"https://restapi.amap.com/v3/geocode/geo?address={location}&key=fc60c58c6d919c5601b52fb5fcaee501"
-        response = requests.get(url)
-        if response.status_code == 200:
-            data = response.json()
-            if data['status'] == '1' and data['geocodes']:
-                location_info = data['geocodes'][0]
-                longitude = location_info['location'].split(',')[0]
-                latitude = location_info['location'].split(',')[1]
-                level = location_info['level']
-                print(f"Location: {location}, Longitude: {longitude}, Latitude: {latitude}")
-                gaode_result[location] = {
-                    "longtitude": longitude,
-                    "latitude": latitude,
-                    "level": level
-                }
-            else:
-                print(f"Location: {location} not found.")
-        else:
-            print(f"Error: Unable to fetch data for {location}. Status code: {response.status_code}")
-    return gaode_result
+import concurrent.futures
+
+def gaode_geo_info(locations, request_timeout=10, total_timeout=200):
+    """
+    并行获取高德地图经纬度信息，每个请求最大超时 request_timeout 秒，整体最多 total_timeout 秒
+    :param locations: [{"Beijing": [116.4, 39.9]}, ...]
+    :return: {"Beijing": {"longtitude": ..., "latitude": ..., "level": ...}, ...}
+    """
+    gaode_api_key = "fc60c58c6d919c5601b52fb5fcaee501"
+    default_result = {
+        "longtitude": -1,
+        "latitude": -1,
+        "level": "timeout"
+    }
+
+    def fetch_location(location):
+        try:
+            location_name = list(location.keys())[0]
+            url = f"https://restapi.amap.com/v3/geocode/geo?address={location_name}&key={gaode_api_key}"
+            response = requests.get(url, timeout=request_timeout)
+            if response.status_code == 200:
+                data = response.json()
+                if data['status'] == '1' and data['geocodes']:
+                    location_info = data['geocodes'][0]
+                    longitude, latitude = location_info['location'].split(',')
+                    return location_name, {
+                        "longtitude": float(longitude),
+                        "latitude": float(latitude),
+                        "level": location_info.get('level', 'unknown')
+                    }
+        except Exception as e:
+            print(f"[ERROR] Location '{location}' failed: {e}")
+        return list(location.keys())[0], default_result
+
+    result = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        futures = [executor.submit(fetch_location, loc) for loc in locations]
+        try:
+            for future in concurrent.futures.as_completed(futures, timeout=total_timeout):
+                name, data = future.result()
+                result[name] = data
+        except concurrent.futures.TimeoutError:
+            print("[ERROR] Total request time exceeded global timeout.")
+            for future in futures:
+                if not future.done():
+                    name = list(locations[futures.index(future)].keys())[0]
+                    result[name] = default_result
+
+    return result
 
 
 @csrf_exempt

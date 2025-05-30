@@ -23,6 +23,7 @@ def deepsearch(destination="Beijing, China", dates="August 15-22, 2025", budget=
     os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "AIzaSyBh2w64uOFq6AFJFo1BVOy6znh-2C93_38")
     os.environ["OPENROUTER_API_KEY"] = os.getenv("OPENROUTER_API_KEY", "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")
+    os.environ["DUFFEL_ACCESS_TOKEN"] = "duffel_test_Li5UOd_hOzpiAwxv3GLp4lQ23Y8bkaXo86R216FMgD-"
     # 判断输入是否为中文
     def is_chinese(text):
         return False
@@ -56,7 +57,7 @@ def deepsearch(destination="Beijing, China", dates="August 15-22, 2025", budget=
     flight_agent = Agent(
         instructions=instruction_map["flight"],
         llm="groq/meta-llama/llama-4-scout-17b-16e-instruct",
-        tools=MCP("npx -y @modelcontextprotocol/server-brave-search", env={"BRAVE_API_KEY": brave_api_key})
+        tools = MCP("python3 core/flight_mcp.py")
     )
 
     hotel_agent = Agent(
