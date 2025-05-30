@@ -97,7 +97,7 @@ def summary(agent_results):
     os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     
     summary_agent = Agent(
-        instructions="Summarize the travel plan based on the agent results and flight information. Select the most appropriate flight options and provide a concise summary of the travel plan.",
+        instructions="Summarize the travel plan based on the agent results and flight information. Select the most appropriate flight options and provide a detailed summary of the travel plan.",
         llm="groq/meta-llama/llama-4-scout-17b-16e-instruct"
     )
     
@@ -171,7 +171,7 @@ def answer_deepsearch(request):
             summary_result = summary(agent_results)
             tool_results.append({})
             agent_results.append({
-                "llm_output": summary_result,
+                "llm_output": summary_result[0],
                 "llm_input": "Summarize the travel plan based on the agent results."
             })
             # Step 4: Save into DB
