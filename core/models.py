@@ -54,6 +54,7 @@ class DeepSearchConversation(models.Model):
     conversationid = models.CharField(max_length=64, unique=True)
     user_id = models.IntegerField()
     destination = models.CharField(max_length=128)
+    startpoint = models.CharField(max_length=128, default="Beijing")
     budget = models.CharField(max_length=128)
     dates = models.CharField(max_length=128)
     preferences = models.TextField()

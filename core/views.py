@@ -225,6 +225,7 @@ def answer_deepsearch(request):
                 conversationid=conversationid, #or str(uuid.uuid4()),  # 如果没传就生成一个 UUID
                 user_id=user_id or 0,
                 destination=destination,
+                startpoint=startpoint,
                 budget=budget,
                 dates=dates,
                 preferences=preferences,
@@ -282,6 +283,7 @@ def get_deepsearch_conversation_by_id(request):
                 "conversationid": conv.conversationid,
                 "user_id": conv.user_id,
                 "destination": conv.destination,
+                "startpoint": conv.startpoint,
                 "budget": conv.budget,
                 "dates": conv.dates,
                 "preferences": conv.preferences,
