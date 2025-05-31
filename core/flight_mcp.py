@@ -4,8 +4,8 @@ from typing import List, Dict, Any, Optional
 
 import httpx
 from mcp.server.fastmcp import FastMCP
-os.environ["DUFFEL_ACCESS_TOKEN"] = "duffel_test_Li5UOd_hOzpiAwxv3GLp4lQ23Y8bkaXo86R216FMgD-"
-DUFFEL_TOKEN = os.getenv("DUFFEL_ACCESS_TOKEN")
+
+DUFFEL_TOKEN = os.getenv("DUFFEL_ACCESS_TOKEN", "duffel_test_Li5UOd_hOzpiAwxv3GLp4lQ23Y8bkaXo86R216FMgD-")
 DUFFEL_BASE_URL = "https://api.duffel.com"
 HEADERS = {
     "Authorization": f"Bearer {DUFFEL_TOKEN}",
@@ -101,65 +101,50 @@ def _summarise_offers(offers: List[Dict[str, Any]], limit: int = 5) -> str:
         return "No offers found."
 
     offers_sorted = sorted(offers, key=lambda off: float(off["total_amount"]))
-    result_lines = []
+    flight_results = {}
 
-    for off in offers_sorted[:limit]:
+    for off_id, off in enumerate(offers_sorted[1:limit+1]):
         #new_str = str(off)
+        total_flight = {}
         #return new_str
-        price = off["total_amount"]
-        currency = off["total_currency"]
+        total_flight["price"] = off["total_amount"]
+        total_flight["currency"] = off["total_currency"]
         # total_duration = _format_duration(off.get("total_duration_mins", 0))
-        emissions = off.get("total_emissions_kg", "N/A")
-        cabin_class = off.get("cabin_class", "N/A")
+        total_flight["emissions"] = off.get("total_emissions_kg", "N/A")
+        total_flight["cabin_class"] = off.get("cabin_class", "N/A")
 
-        header = (
-            f" Price: {currency} {price} "
-            f"| Cabin: {cabin_class} | Emissions: {emissions} kg"
-        )
-        offer_lines = [header]
+
+        
+        import logging
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger("flightsearch")
 
         for slice_idx, slc in enumerate(off.get("slices", [])):
-            offer_lines.append(f"  Slice {slice_idx + 1}:")
 
             for seg_idx, seg in enumerate(slc.get("segments", [])):
-                carrier = seg["marketing_carrier"]["name"]
-                flight_number = seg.get("marketing_carrier_flight_number", "N/A")
-                origin = seg["origin"]
-                dest = seg["destination"]
-                dep_time = _parse_time(seg["departing_at"])
-                arr_time = _parse_time(seg["arriving_at"])
+                logger.info(f"Processing segment {seg_idx} {seg}")
+                current_flight = {}
+                current_flight["carrier"] = seg["marketing_carrier"]["name"]
+                current_flight["flight_number"] = seg.get("marketing_carrier_flight_number", "N/A")
+                current_flight["origin"] = seg["origin"]
+                current_flight["dest"] = seg["destination"]
+                current_flight["dep_time"] = _parse_time(seg["departing_at"])
+                current_flight["arr_time"] = _parse_time(seg["arriving_at"])
                 # duration = _format_duration(seg.get("duration_mins", 0))
                 aircraft_data = seg.get("aircraft") or {}
-                aircraft = aircraft_data.get("name", "N/A")
+                current_flight["aircraft"] = aircraft_data.get("name", "N/A")
 
                 passenger_setting = seg.get("passengers")[0]
 
-                cabin = passenger_setting.get("cabin_class_marketing_name", "N/A")
+                current_flight["cabin"] = passenger_setting.get("cabin_class_marketing_name", "N/A")
                 # emissions = seg.get("emissions_kg", "N/A")
 
                 # Amenities
-                amenities = passenger_setting.get("cabin", {}).get("amenities", {})
-                amenity_strs = []
-                if amenities.get("wifi"):
-                    amenity_strs.append("Wi-Fi")
-                if amenities.get("entertainment"):
-                    amenity_strs.append("Entertainment")
-                if amenities.get("power"):
-                    amenity_strs.append("Power")
-                amenity_str = ", ".join(amenity_strs) if amenity_strs else "None"
+                current_flight["amenities"] = passenger_setting.get("cabin", {}).get("amenities", {})
+                total_flight[str(seg_idx)] = current_flight
 
-                segment_info = (
-                    f"    Segment {seg_idx + 1}: {carrier} {flight_number} | "
-                    f"{origin['iata_code']} ({origin['name']}) → {dest['iata_code']} ({dest['name']})\n"
-                    f"      Dep: {dep_time} | Arr: {arr_time} \n"
-                    f"      Aircraft: {aircraft} | Cabin: {cabin} \n"
-                    f"      Amenities: {amenity_str}"
-                )
-                offer_lines.append(segment_info)
-
-        result_lines.append("\n".join(offer_lines))
-
-    return "\n\n".join(result_lines)
+        flight_results[str(off_id)] = total_flight    
+    return flight_results
 
 
 # ────────── MCP tool ───────────────────────────────────────────────────────────

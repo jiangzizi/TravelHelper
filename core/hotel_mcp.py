@@ -98,13 +98,14 @@ async def search_google_hotels(
             params[key] = value
     hotel_response = await make_searchapi_request(params)
 
-    tool_result = []
+    tool_result = {}
     import logging
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger("hotelsearch")
     logger.info(f"Received response: {len(hotel_response.get('properties', []))}")
     for idx, hotel in enumerate(hotel_response.get("properties", [])[:10]):
         logger.info(f"Processing hotel #{idx + 1}: {hotel.get('name')}")
+        # logger.info(f"Hotel details: {hotel}")
         current_hotel = {}
         current_hotel["name"] = hotel.get("name")
         current_hotel["address"] = hotel.get("gps_coordinates", {})
@@ -114,9 +115,14 @@ async def search_google_hotels(
         current_hotel["rating"] = hotel.get("rating")
         current_hotel["amenities"] = hotel.get("amenities", [])
         current_hotel["excluded_amenities"] = hotel.get("excluded_amenities", [])
-        tool_result.append(current_hotel)
+        images = hotel.get("images", [])
+        if images:
+            current_hotel["main_image"] = images[0].get("original")
+        else:
+            current_hotel["main_image"] = None
+        tool_result[idx] = current_hotel
 
-    logger.info(f"Processed {len(tool_result)} hotels successfully.")   
+    # logger.info(f"Processed {len(tool_result)} hotels successfully.")   
     return tool_result
 
 if __name__ == "__main__":

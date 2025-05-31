@@ -26,9 +26,9 @@ def deepsearch(destination="Beijing, China", dates="August 15-22, 2025", budget=
     os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "AIzaSyBh2w64uOFq6AFJFo1BVOy6znh-2C93_38")
     os.environ["OPENROUTER_API_KEY"] = os.getenv("OPENROUTER_API_KEY", "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")
 
-    travel_query = f"Make a travel plan for me in {destination} during {dates} on a budget of {budget} with preferences of {preferences}. I am currently in {startpoint}."
+    travel_query = f"Make a travel plan for me in {destination} during {dates} with preferences of {preferences}."
     instruction_map = {
-        "research": "Research about travel destinations, attractions, local customs, and travel requirements",
+        "research": "Research about must visit travel destinations, attractions and local customs",
         "planning": "Design detailed day-by-day travel plans incorporating activities, transport, and rest time"
     }
 
@@ -60,8 +60,9 @@ def airplane(start_date, end_date, startpoint, destination):
     os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "AIzaSyBh2w64uOFq6AFJFo1BVOy6znh-2C93_38")
     os.environ["OPENROUTER_API_KEY"] = os.getenv("OPENROUTER_API_KEY", "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")
-    os.environ["DUFFEL_ACCESS_TOKEN"] = "duffel_test_Li5UOd_hOzpiAwxv3GLp4lQ23Y8bkaXo86R216FMgD-"
+    os.environ["DUFFEL_ACCESS_TOKEN"] = os.getenv("DEFFEL_ACCESS_TOKEN", "duffel_test_Li5UOd_hOzpiAwxv3GLp4lQ23Y8bkaXo86R216FMgD-")
     print(f"groq key {os.getenv('GROQ_API_KEY')}")
+    print(f"duffel key {os.getenv('DUFFEL_ACCESS_TOKEN')}")
 
     judge_need_plane_agent = Agent(
         instructions="Judge whether a flight is needed based on the start date, end date, startpoint, and destination. If a flight is needed, output YES. Otherwise, output NO.",
@@ -84,10 +85,14 @@ def airplane(start_date, end_date, startpoint, destination):
             f"Find flights from {destination} to {startpoint} on {end_date}")
         
         # print(f"\n=== FLIGHT SEARCH RESULT ===\n{result1} \n {tool_call_result1}")
-
+        import _json
         total_result = {
             "llm_output": f"From {startpoint} to {destination} flight \n{result1}\n\n From {destination} to {startpoint}\n {result2}",
-            "tool_call_result": f"From {startpoint} to {destination} flight toolcall\n {tool_call_result1} \n\n From {destination} to {startpoint} flight toolcall\n {tool_call_result2}"
+            "tool_call_result": {
+                "from_to_flight1": json.loads(tool_call_result1),
+                "from_to_flight2": json.loads(tool_call_result2),
+            }
+            #f"From {startpoint} to {destination} flight toolcall\n {tool_call_result1} \n\n From {destination} to {startpoint} flight toolcall\n {tool_call_result2}"
         }
         print(f"\n=== TOTAL FLIGHT SEARCH RESULT ===\n{total_result}")
         return total_result
@@ -119,8 +124,20 @@ def summary(agent_results):
     os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     
     summary_agent = Agent(
-        instructions="Summarize the travel plan based on the agent results and flight information. Select the most appropriate flight options, most appropriate hotel first. And then provide a detailed summary of the travel plan.",
-        llm="groq/meta-llama/llama-4-scout-17b-16e-instruct"
+        instructions=(
+        "You are a travel planner assistant. Based on the agent results and flight information provided, "
+        "generate a detailed and well-structured 7-day travel plan for a history enthusiast. "
+        "Use the following format:\n\n"
+        "1. Overview: Include duration, budget per person, travel preferences, and current location.\n"
+        "2. Flight Information: Show selected flights with airline, flight number, departure/arrival time, and price.\n"
+        "3. Hotel Selection: Recommend the best hotel based on rating and location. Include name, rating, and price per night.\n"
+        "4. Travel Plan: Describe each day’s main activities, grouped logically (e.g., history sites, cultural activities).\n"
+        "5. Budget Breakdown: Estimate total costs broken down by transportation, accommodation, food, and activities.\n"
+        "6. Itinerary Table: A day-by-day summary with date, main activities, and estimated costs.\n\n"
+        "Be concise but informative. Use markdown-style bullet points and section headers to make it easy to read. "
+        "The tone should be professional and useful."
+        )
+        ,llm="groq/meta-llama/llama-4-scout-17b-16e-instruct"
     )
     
     # Combine all agent outputs into a single string
