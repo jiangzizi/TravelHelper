@@ -94,13 +94,32 @@ def airplane(start_date, end_date, startpoint, destination):
     else:
         return {"message": "No flight needed."}
 
+def hotel(start_date, end_date, destination):
+    import datetime
+    from mypraisonaiagents import Agent, Agents, MCP
+    os.environ["AMADEUS_CLIENT_ID"] = "mcehOG8E8AAWpwdNLWFbYE41tNxoIqsk"
+    os.environ["AMADEUS_CLIENT_SECRET"] = "6qKytIzAmaELkUP7"
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    agent = Agent(
+        instructions=f"""search for hotel. Current date is {datetime.datetime.now().strftime('%Y-%m-%d')}.""",
+        llm="groq/meta-llama/llama-4-scout-17b-16e-instruct",
+        tools = MCP("python3 core/hotel_mcp.py")
+    )
+    import json
+    hotel_result, hotel_tool_call = agent.start(f"I want to search a hotel in {destination} from {start_date} to {end_date}.")
+    total_reult = {
+        "llm_output": hotel_result,
+        "tool_call_result": json.loads(hotel_tool_call)
+    }
+    return total_reult
+
 
 def summary(agent_results):
     from mypraisonaiagents import Agent, Agents
     os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     
     summary_agent = Agent(
-        instructions="Summarize the travel plan based on the agent results and flight information. Select the most appropriate flight options and provide a detailed summary of the travel plan.",
+        instructions="Summarize the travel plan based on the agent results and flight information. Select the most appropriate flight options, most appropriate hotel first. And then provide a detailed summary of the travel plan.",
         llm="groq/meta-llama/llama-4-scout-17b-16e-instruct"
     )
     
@@ -128,6 +147,8 @@ def answer_deepsearch(request):
             start_data, end_data = dates.split(",")
             print(f"Start date: {start_data}, End date: {end_data}")
             airplane_result = airplane(start_data, end_data, startpoint, destination)
+            hotel_result = hotel(start_data, end_data, destination)
+
         
             if not destination or not dates or not budget or not preferences:
                 return JsonResponse({"error": "Query cannot be empty"}, status=400)
@@ -147,6 +168,10 @@ def answer_deepsearch(request):
             agent_results.append({
                 "llm_output": airplane_result["llm_output"],
                 "llm_input": f"Find flights from {startpoint} to {destination} on {start_data} and return on {end_data}."
+            })
+            agent_results.append({
+                "llm_output": hotel_result["llm_output"],
+                "llm_input": f"Find hotels in {destination} from {start_data} to {end_data}."
             })
             # Step 3: Parse tool results
             def parse_search_results(results_str):
@@ -171,6 +196,7 @@ def answer_deepsearch(request):
                 else:
                     tool_results.append(None)
             tool_results.append([{"airplane": airplane_result["tool_call_result"]}])
+            tool_results.append([{"hotel": hotel_result["tool_call_result"]}])
             summary_result = summary(agent_results)
             tool_results.append([])
             agent_results.append({
