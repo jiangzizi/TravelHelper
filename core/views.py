@@ -1,7 +1,9 @@
+import uuid
 from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from core.models import Conversation, Message # Assuming these are your Django models
 from zhipuai import ZhipuAI
+from django.utils.encoding import smart_str
 from core.models import DeepSearchConversation
 import os
 import re
@@ -20,7 +22,7 @@ def deepsearch(destination="Beijing, China", dates="August 15-22, 2025", budget=
     from mypraisonaiagents import Agent, Agents, MCP
     brave_api_key = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0"
     os.environ["BRAVE_API_KEY"] = brave_api_key
-    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "AIzaSyBh2w64uOFq6AFJFo1BVOy6znh-2C93_38")
     os.environ["OPENROUTER_API_KEY"] = os.getenv("OPENROUTER_API_KEY", "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")
 
@@ -55,10 +57,11 @@ def deepsearch(destination="Beijing, China", dates="August 15-22, 2025", budget=
 def airplane(start_date, end_date, startpoint, destination):
     from mypraisonaiagents import Agent, Agents, MCP
     os.environ["BRAVE_API_KEY"] = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0"
-    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "AIzaSyBh2w64uOFq6AFJFo1BVOy6znh-2C93_38")
     os.environ["OPENROUTER_API_KEY"] = os.getenv("OPENROUTER_API_KEY", "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")
     os.environ["DUFFEL_ACCESS_TOKEN"] = "duffel_test_Li5UOd_hOzpiAwxv3GLp4lQ23Y8bkaXo86R216FMgD-"
+    print(f"groq key {os.getenv('GROQ_API_KEY')}")
 
     judge_need_plane_agent = Agent(
         instructions="Judge whether a flight is needed based on the start date, end date, startpoint, and destination. If a flight is needed, output YES. Otherwise, output NO.",
@@ -94,7 +97,7 @@ def airplane(start_date, end_date, startpoint, destination):
 
 def summary(agent_results):
     from mypraisonaiagents import Agent, Agents
-    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     
     summary_agent = Agent(
         instructions="Summarize the travel plan based on the agent results and flight information. Select the most appropriate flight options and provide a detailed summary of the travel plan.",

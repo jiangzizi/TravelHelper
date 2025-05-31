@@ -93,7 +93,7 @@ def show_lattest_longtitude_latitude(request):
             lattest_content = past_messages.last().content
             print(f"lattest content is {lattest_content}")
             print("calling show_lattest_longtitude_latitude")
-            os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+            os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
             google_map_agent = Agent(
                 instructions="Perform map search to gather information",
                 llm="groq/meta-llama/llama-4-scout-17b-16e-instruct",
@@ -175,7 +175,7 @@ def show_lattest_deepsearch_longtitude_latitude(request):
 
             print(f"Latest llm_output: {latest_llm_output}")
 
-            os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+            os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
             google_map_agent = Agent(
                 instructions="Perform map search to gather information",
                 llm="groq/meta-llama/llama-4-scout-17b-16e-instruct",

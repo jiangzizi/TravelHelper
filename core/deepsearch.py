@@ -5,7 +5,7 @@ def deepsearcher():
 
     brave_api_key = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0"
     os.environ["BRAVE_API_KEY"] = brave_api_key
-    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     os.environ["DUFFEL_API_KEY_LIVE"] = "duffel_test_Li5UOd_hOzpiAwxv3GLp4lQ23Y8bkaXo86R216FMgD-"
     os.environ["GOOGLE_MAPS_API_KEY"] = "AIzaSyD8kz0EW1KKo8B3I8GU7nAy19R8S6X6RVE"
     maps_api_key = os.getenv("GOOGLE_MAPS_API_KEY", "AIzaSyD8kz0EW1KKo8B3I8GU7nAy19R8S6X6RVE")
