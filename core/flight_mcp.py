@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-DUFFEL_TOKEN = os.getenv("DUFFEL_ACCESS_TOKEN", "duffel_test_Li5UOd_hOzpiAwxv3GLp4lQ23Y8bkaXo86R216FMgD-")
+DUFFEL_TOKEN = os.getenv("DUFFEL_ACCESS_TOKEN")
 DUFFEL_BASE_URL = "https://api.duffel.com"
 HEADERS = {
     "Authorization": f"Bearer {DUFFEL_TOKEN}",
@@ -102,8 +102,9 @@ def _summarise_offers(offers: List[Dict[str, Any]], limit: int = 5) -> str:
 
     offers_sorted = sorted(offers, key=lambda off: float(off["total_amount"]))
     flight_results = {}
+    flight_count = 0
 
-    for off_id, off in enumerate(offers_sorted[1:limit+1]):
+    for off_id, off in enumerate(offers_sorted[:limit]):
         #new_str = str(off)
         total_flight = {}
         #return new_str
@@ -112,12 +113,12 @@ def _summarise_offers(offers: List[Dict[str, Any]], limit: int = 5) -> str:
         # total_duration = _format_duration(off.get("total_duration_mins", 0))
         total_flight["emissions"] = off.get("total_emissions_kg", "N/A")
         total_flight["cabin_class"] = off.get("cabin_class", "N/A")
-
+        include_duffel = False
 
         
         import logging
         logging.basicConfig(level=logging.INFO)
-        logger = logging.getLogger("flightsearch")
+        logger = logging.getLogger("hotelsearch")
 
         for slice_idx, slc in enumerate(off.get("slices", [])):
 
@@ -125,6 +126,8 @@ def _summarise_offers(offers: List[Dict[str, Any]], limit: int = 5) -> str:
                 logger.info(f"Processing segment {seg_idx} {seg}")
                 current_flight = {}
                 current_flight["carrier"] = seg["marketing_carrier"]["name"]
+                if "duffel" in current_flight["carrier"].lower():
+                    include_duffel = True
                 current_flight["flight_number"] = seg.get("marketing_carrier_flight_number", "N/A")
                 current_flight["origin"] = seg["origin"]
                 current_flight["dest"] = seg["destination"]
@@ -142,8 +145,9 @@ def _summarise_offers(offers: List[Dict[str, Any]], limit: int = 5) -> str:
                 # Amenities
                 current_flight["amenities"] = passenger_setting.get("cabin", {}).get("amenities", {})
                 total_flight[str(seg_idx)] = current_flight
-
-        flight_results[str(off_id)] = total_flight    
+        if not include_duffel:
+            flight_results[str(flight_count)] = total_flight    
+            flight_count += 1
     return flight_results
 
 
