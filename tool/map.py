@@ -128,13 +128,24 @@ def cluster_close_locations(locations, eps_km=5):
     return clusters
 
 
-def extract_clusters(latest_llm_output, instuction):
+def extract_clusters(latest_llm_output, instruction):
     os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    import json
+
+
+    # 创建 Agent
+    full_instruction = (
+    f"{instruction}\n"
+    "Output only a JSON list of dictionaries, where each dictionary contains a travel attraction name as the key and its description as the value.\n"
+    "Example output:\n"
+    "[\n"
+    "  {\"Eiffel Tower\": \"The Eiffel Tower, located in Paris, is a wrought-iron lattice tower built in 1889 for the World's Fair. Standing 324 meters tall, it’s a global symbol of France and a major tourist attraction. Its unique design and stunning views make it an architectural marvel and cultural icon.\"},\n"
+    "  {\"Louvre Museum\": \"The Louvre Museum in Paris is the world's largest art museum and a historic monument. It houses over 380,000 objects, including the Mona Lisa and the Venus de Milo. The museum's glass pyramid entrance is an architectural highlight.\"}\n"
+    "]"
+)
+
     agent = Agent(
-        instructions=f"""{instuction}
-    Output only a JSON list of strings, with each string being the name of one attraction.
-    Example output:
-    ["Eiffel Tower", "Louvre Museum", "Notre-Dame Cathedral"]""",
+        instructions=full_instruction,
         llm="groq/meta-llama/llama-4-scout-17b-16e-instruct",
     )
 
@@ -151,11 +162,33 @@ def extract_clusters(latest_llm_output, instuction):
         return {}
 
     print(f"LLM raw result: {attractions}")
-    locations = map_geo_info_with_region_check(attractions, google_map_key="AIzaSyD8kz0EW1KKo8B3I8GU7nAy19R8S6X6RVE", level='city', request_timeout=2000, total_timeout=10000)
-    #print(f"Locations after mapping: {locations}")
+    places = []
+    attraction_map = {}
+    for place in attractions:
+        print(f"Processing place: {place}")
+        places.append(list(place.keys())[0])
+        attraction_map[list(place.keys())[0]] = list(place.values())[0]
+    print(f"Places to map: {places}")
+    locations = map_geo_info_with_region_check(places, google_map_key="AIzaSyD8kz0EW1KKo8B3I8GU7nAy19R8S6X6RVE", level='city', request_timeout=2000, total_timeout=10000)
+    print(f"Locations after mapping: {locations}")
     clusters = cluster_close_locations(locations, eps_km=50)
     print(f"Clusters formed: {clusters}")
-    return clusters
+    new_clusters = {}
+    for key, old_list in clusters.items():
+        print(f"Processing cluster {key} with {len(old_list)} items")
+        new_list = []
+        for item in old_list:
+            print(f"Processing item: {item}")
+            new_item = {}
+            new_item['name'] = item['name']
+            new_item['latitude'] = item['latitude']
+            new_item['longitude'] = item['longitude']
+            print(f"Mapping name to description: {new_item['name']}")
+            new_item['description'] = attraction_map[new_item['name']]
+            print(f"New item: {new_item}")
+            new_list.append(new_item)
+        new_clusters[key] = new_list
+    return new_clusters
 
 @csrf_exempt
 def show_lattest_longtitude_latitude(request):
@@ -191,7 +224,7 @@ def show_lattest_longtitude_latitude(request):
             lattest_content = past_messages.last().content
             print(f"lattest content is {lattest_content}")
             print("calling show_lattest_longtitude_latitude")
-            clusters = extract_clusters(lattest_content, "Extract the main tourist attractions mentioned in the following text")
+            clusters = extract_clusters(lattest_content, "Extract the main tourist attractions mentioned in the following text with a 50-100 word description")
             return JsonResponse({
                 "geo_info": clusters
                                 })
@@ -232,7 +265,7 @@ def show_lattest_deepsearch_longtitude_latitude(request):
                 return JsonResponse({"error": "llm_output not found in latest agent_result"}, status=404)
 
             print(f"Latest llm_output: {latest_llm_output}")
-            clusters = extract_clusters(latest_llm_output, "Extract the main tourist attractions mentioned in the following text Itinerary Table section.")
+            clusters = extract_clusters(latest_llm_output, "Extract the main tourist attractions mentioned in the following text Itinerary Table section with a 50-100 word description.")
             
             return JsonResponse({
                 "geo_info": clusters
