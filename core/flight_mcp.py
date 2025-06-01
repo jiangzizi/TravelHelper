@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-DUFFEL_TOKEN = os.getenv("DUFFEL_ACCESS_TOKEN")
+DUFFEL_TOKEN = os.getenv("DEFFEL_ACCESS_TOKEN", "duffel_test_Li5UOd_hOzpiAwxv3GLp4lQ23Y8bkaXo86R216FMgD-")
 DUFFEL_BASE_URL = "https://api.duffel.com"
 HEADERS = {
     "Authorization": f"Bearer {DUFFEL_TOKEN}",

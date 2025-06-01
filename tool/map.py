@@ -6,55 +6,156 @@ from core.models import Conversation, Message, DeepSearchConversation
 from praisonaiagents import Agent, Agents, MCP
 import requests
 import concurrent.futures
+from math import radians, cos, sin, asin, sqrt
+from sklearn.cluster import DBSCAN
+import numpy as np
 
-def gaode_geo_info(locations, request_timeout=10, total_timeout=200):
+def map_geo_info_with_region_check(location_names, google_map_key, level='country', request_timeout=2, total_timeout=10):
     """
-    并行获取高德地图经纬度信息，每个请求最大超时 request_timeout 秒，整体最多 total_timeout 秒
-    :param locations: [{"Beijing": [116.4, 39.9]}, ...]
-    :return: {"Beijing": {"longtitude": ..., "latitude": ..., "level": ...}, ...}
+    并行获取 Google Maps 经纬度信息，并检查所有地点是否属于同一地区（如同一国家/城市）。
+    
+    参数:
+        location_names: List[str] 地点名称列表
+        google_map_key: str       Google Maps API key
+        level: str                区域层级，常见有 'country', 'administrative_area_level_1', 'locality'
+        request_timeout: float    每个请求的超时时间（秒）
+        total_timeout: float      所有任务的最大总耗时（秒）
+    
+    返回:
+        {
+            'geo_info': {
+                'Forbidden City': {'longitude': ..., 'latitude': ..., 'level': ..., 'region': 'China'},
+                ...
+            },
+            'same_region': True/False,
+            'region_set': {'China'}
+        }
     """
-    gaode_api_key = "fc60c58c6d919c5601b52fb5fcaee501"
-    default_result = {
-        "longtitude": -1,
-        "latitude": -1,
-        "level": "timeout"
+
+    def fetch_info(name):
+        geo_url = 'https://maps.googleapis.com/maps/api/geocode/json'
+        try:
+            # Step 1: 获取经纬度
+            geo_params = {'address': name, 'key': google_map_key}
+            geo_resp = requests.get(geo_url, params=geo_params, timeout=request_timeout).json()
+
+            if geo_resp['status'] != 'OK' or not geo_resp['results']:
+                return name, None
+
+            result = geo_resp['results'][0]
+            loc = result['geometry']['location']
+            loc_level = result['types'][0] if result['types'] else 'unknown'
+
+            # Step 2: 获取地区层级（如 country）
+            components = result.get('address_components', [])
+            region_name = None
+            for comp in components:
+                if level in comp['types']:
+                    region_name = comp['long_name']
+                    break
+
+            return name, {
+                'longitude': loc['lng'],
+                'latitude': loc['lat'],
+                'level': loc_level,
+                'region': region_name or 'UNKNOWN'
+            }
+
+        except Exception:
+            return name, None
+
+    geo_info = {}
+    region_set = set()
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {executor.submit(fetch_info, name): name for name in location_names}
+        for future in concurrent.futures.as_completed(futures, timeout=total_timeout):
+            name = futures[future]
+            try:
+                loc_name, info = future.result()
+                geo_info[loc_name] = info
+                if info and 'region' in info:
+                    region_set.add(info['region'])
+                else:
+                    region_set.add('UNKNOWN')
+            except Exception:
+                geo_info[name] = None
+                region_set.add('UNKNOWN')
+
+    return {
+        'geo_info': geo_info,
+        'same_region': len(region_set) == 1,
+        'region_set': region_set
     }
 
-    def fetch_location(location):
-        try:
-            location_name = list(location.keys())[0]
-            url = f"https://restapi.amap.com/v3/geocode/geo?address={location_name}&key={gaode_api_key}"
-            response = requests.get(url, timeout=request_timeout)
-            if response.status_code == 200:
-                data = response.json()
-                if data['status'] == '1' and data['geocodes']:
-                    location_info = data['geocodes'][0]
-                    longitude, latitude = location_info['location'].split(',')
-                    return location_name, {
-                        "longtitude": float(longitude),
-                        "latitude": float(latitude),
-                        "level": location_info.get('level', 'unknown')
-                    }
-        except Exception as e:
-            print(f"[ERROR] Location '{location}' failed: {e}")
-        return list(location.keys())[0], default_result
 
-    result = {}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-        futures = [executor.submit(fetch_location, loc) for loc in locations]
-        try:
-            for future in concurrent.futures.as_completed(futures, timeout=total_timeout):
-                name, data = future.result()
-                result[name] = data
-        except concurrent.futures.TimeoutError:
-            print("[ERROR] Total request time exceeded global timeout.")
-            for future in futures:
-                if not future.done():
-                    name = list(locations[futures.index(future)].keys())[0]
-                    result[name] = default_result
+def haversine(lon1, lat1, lon2, lat2):
+    R = 6371.0
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+    dlon, dlat = lon2 - lon1, lat2 - lat1
+    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+    return 2 * R * asin(sqrt(a))
 
-    return result
+def cluster_close_locations(locations, eps_km=5):
+    #print(f"Clustering locations with eps_km={eps_km}\n {locations}\n {locations.keys()}")
+    geo_info = locations['geo_info']
+    #print(f"Geo info: {geo_info.keys()}\n\n")
+    names = list(geo_info.keys())
+    #print(f"Names for clustering: {names}\n\n")
+    coords = np.array([[v['latitude'], v['longitude']] for v in geo_info.values() if v is not None])
 
+    #print(f"Coordinates for clustering: {coords}")
+
+    dist_matrix = np.zeros((len(coords), len(coords)))
+    for i in range(len(coords)):
+        for j in range(i + 1, len(coords)):
+            dist = haversine(coords[i][1], coords[i][0], coords[j][1], coords[j][0])
+            dist_matrix[i][j] = dist_matrix[j][i] = dist
+    #print(f"Distance matrix: {dist_matrix}")
+    clustering = DBSCAN(eps=eps_km, min_samples=2, metric='precomputed').fit(dist_matrix)
+    labels = clustering.labels_
+    #print(f"Clustering labels: {labels}")
+    clusters = {}
+    for label, name, coord in zip(labels, names, coords):
+        if label == -1:
+            continue
+        clusters.setdefault(int(label), []).append({
+            'name': name,
+            'latitude': float(coord[0]),
+            'longitude': float(coord[1])
+        })
+
+    return clusters
+
+
+def extract_clusters(latest_llm_output, instuction):
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    agent = Agent(
+        instructions=f"""{instuction}
+    Output only a JSON list of strings, with each string being the name of one attraction.
+    Example output:
+    ["Eiffel Tower", "Louvre Museum", "Notre-Dame Cathedral"]""",
+        llm="groq/meta-llama/llama-4-scout-17b-16e-instruct",
+    )
+
+    result = agent.start(f"""Extract and only extract the main tourist attractions like parks, must-visit spots, universities, landmarks, museums or other kinds of trip spots from the following text section \n\n{latest_llm_output}\n\n Do not include any other information""")
+    import re, json
+
+    match = re.search(r'\[.*?\]', result, re.DOTALL)
+    if match:
+        attractions = json.loads(match.group(0))
+    else:
+        attractions = []
+
+    if not attractions:
+        return {}
+
+    print(f"LLM raw result: {attractions}")
+    locations = map_geo_info_with_region_check(attractions, google_map_key="AIzaSyD8kz0EW1KKo8B3I8GU7nAy19R8S6X6RVE", level='city', request_timeout=2000, total_timeout=10000)
+    #print(f"Locations after mapping: {locations}")
+    clusters = cluster_close_locations(locations, eps_km=50)
+    print(f"Clusters formed: {clusters}")
+    return clusters
 
 @csrf_exempt
 def show_lattest_longtitude_latitude(request):
@@ -87,57 +188,12 @@ def show_lattest_longtitude_latitude(request):
 
             print(f"conversation id is {conversation.id} user_id is {conversation.user_id}")
             past_messages = Message.objects.filter(conversation=conversation).order_by('index')
-            # history = [{"role": m.role, "content": m.content} for m in past_messages]
-            # history.append({"role": "user", "content": user_query})
-            # print(f"history length is {len(history)}")
             lattest_content = past_messages.last().content
             print(f"lattest content is {lattest_content}")
             print("calling show_lattest_longtitude_latitude")
-            os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
-            google_map_agent = Agent(
-                instructions="Perform map search to gather information",
-                llm="groq/meta-llama/llama-4-scout-17b-16e-instruct",
-                tools=MCP("npx -y @modelcontextprotocol/server-google-maps", env={"GOOGLE_MAPS_API_KEY": "AIzaSyD8kz0EW1KKo8B3I8GU7nAy19R8S6X6RVE"})
-            )
-            agents = Agents(agents=[ 
-                                    google_map_agent
-                                    ])
-
-            prompt = f"""
-            Extract all location names from the following text, then search for their longtitude and lantitude.
-
-            If a location does not have a pair of coordinates, ignore it.
-
-            Output the result strictly as a JSON list. Each item in the list should be a JSON object in the format:  
-            {{ "location_name": [longitude, latitude] }}  
-            Do not include any other text, explanation, or comments. Only return the JSON list.
-
-            Example input:  
-            "I want to visit Beijing and Shanghai."
-
-            Example output:  
-            [
-            {{ "Beijing": [116.4074, 39.9042] }},
-            {{ "Shanghai": [121.4737, 31.2304] }}
-            ]
-
-            Now process the following input:  
-            {lattest_content}
-            """
-
-            # 假设你正在使用某个支持 agents.start() 的大模型框架
-            result = agents.start(prompt)
-
-            # 打印结果
-            print(result)
-
-            json_result = json.loads(result)
-            gaode_result = gaode_geo_info(json_result)
-
-            print(f"gaode result {gaode_result}")
+            clusters = extract_clusters(lattest_content, "Extract the main tourist attractions mentioned in the following text")
             return JsonResponse({
-                "llm_content": json_result,
-                "gaode_result": gaode_result
+                "geo_info": clusters
                                 })
         except Exception as e:
             return JsonResponse({"error": f"json decode error: {str(e)}"}, status=500)
@@ -151,6 +207,8 @@ def show_lattest_longtitude_latitude(request):
 
 @csrf_exempt
 def show_lattest_deepsearch_longtitude_latitude(request):
+    print(f"calling show_lattest_deepsearch_longtitude_latitude")
+    import json
     if request.method == 'POST':
         try:
             body_unicode = request.body.decode('utf-8')
@@ -174,50 +232,10 @@ def show_lattest_deepsearch_longtitude_latitude(request):
                 return JsonResponse({"error": "llm_output not found in latest agent_result"}, status=404)
 
             print(f"Latest llm_output: {latest_llm_output}")
-
-            os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
-            google_map_agent = Agent(
-                instructions="Perform map search to gather information",
-                llm="groq/meta-llama/llama-4-scout-17b-16e-instruct",
-                tools=MCP("npx -y @modelcontextprotocol/server-google-maps", env={
-                    "GOOGLE_MAPS_API_KEY": "AIzaSyD8kz0EW1KKo8B3I8GU7nAy19R8S6X6RVE"
-                })
-            )
-
-            agents = Agents(agents=[google_map_agent])
-
-            prompt = f"""
-            Extract all location names from the following text, then search for their longtitude and lantitude.
-
-            If a location does not have a pair of coordinates, ignore it.
-
-            Output the result strictly as a JSON list. Each item in the list should be a JSON object in the format:  
-            {{ "location_name": [longitude, latitude] }}  
-            Do not include any other text, explanation, or comments. Only return the JSON list.
-
-            Example input:  
-            "I want to visit Beijing and Shanghai."
-
-            Example output:  
-            [
-            {{ "Beijing": [116.4074, 39.9042] }},
-            {{ "Shanghai": [121.4737, 31.2304] }}
-            ]
-
-            Now process the following input:  
-            {latest_llm_output}
-            """
-
-            result = agents.start(prompt)
-
-            print(f"LLM raw result: {result}")
-
-            json_result = json.loads(result)
-            gaode_result = gaode_geo_info(json_result)
-
+            clusters = extract_clusters(latest_llm_output, "Extract the main tourist attractions mentioned in the following text Itinerary Table section.")
+            
             return JsonResponse({
-                "llm_content": json_result,
-                "gaode_result": gaode_result
+                "geo_info": clusters
             })
 
         except Exception as e:
