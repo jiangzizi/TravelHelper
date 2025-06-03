@@ -129,7 +129,7 @@ def cluster_close_locations(locations, eps_km=5):
 
 
 def extract_clusters(latest_llm_output, instruction):
-    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     import json
 
 
