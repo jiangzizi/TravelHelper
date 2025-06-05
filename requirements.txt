@@ -21,6 +21,7 @@ filelock==3.18.0
 frozendict==2.4.6
 frozenlist==1.6.0
 fsspec==2025.3.2
+google_search_results==2.4.2
 googlemaps==4.10.0
 gunicorn==23.0.0
 h11==0.16.0
