@@ -9,6 +9,7 @@ import concurrent.futures
 from math import radians, cos, sin, asin, sqrt
 from sklearn.cluster import DBSCAN
 import numpy as np
+from serpapi import GoogleSearch
 
 def map_geo_info_with_region_check(location_names, google_map_key, level='country', request_timeout=2, total_timeout=10):
     """
@@ -128,7 +129,64 @@ def cluster_close_locations(locations, eps_km=5):
     return clusters
 
 
-def extract_clusters(latest_llm_output, instruction):
+def get_place_images(place_names, serpapi_key, real_search = True):
+    print(f"Fetching images for places: {place_names}")
+    images = {}
+    for place in place_names:
+        images[place] = ["https://www.example.com/image.jpg"]  # Placeholder for actual image fetching logic
+        if real_search:
+            try:
+                params = {
+                    "q": place,
+                    "engine": "google_images_light",
+                    "api_key": serpapi_key
+                }
+                search = GoogleSearch(params)
+                results = search.get_dict()
+                image_urls = []
+                if 'images_results' in results and results['images_results']:
+                    for image in results['images_results']:
+                        if 'thumbnail' in image:
+                            image_urls.append(image['thumbnail'])
+                    images[place] = image_urls
+            except Exception as e:
+                print(f"Error fetching image for {place}: {e}")
+
+    return images
+
+def get_llm_ratings(place_names):
+    print(f"Fetching LLM ratings for places: {place_names}")
+    ratings = {}
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    agent = Agent(llm="groq/meta-llama/llama-4-scout-17b-16e-instruct", instructions= "Generate a rating for the following places based on their popularity and significance. The rating should be a float number between 1 and 5, where 1 is the lowest and 5 is the highest. Be strict and avoid rating all places a 5.0. Output your rating in a JSON format with the place name as the key and the rating as the value. Do not include any other information.")
+
+    result = agent.start(f"Generate a rating for the following places: {', '.join(place_names)}")
+    print(f"LLM raw result: {result}")
+    import re
+    match = re.search(r'\{.*?\}', result, re.DOTALL)
+    if match:
+        ratings = json.loads(match.group(0))
+    else:
+        print("No valid JSON found in LLM output.")
+
+    return ratings  # Placeholder for actual LLM rating fetching logic
+
+def get_llm_free_charge(place_names):
+    print(f"Fetching LLM free charge for places: {place_names}")
+    free_charge = {}
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    agent = Agent(llm="groq/meta-llama/llama-4-scout-17b-16e-instruct", instructions= "Generate a boolean value indicating whether the following places is free to visit or not. Output your result in a JSON format with the place name as the key and a boolean value as the value. Do not include any other information. Places that are free to visit should be marked as true, and those that require a fee should be marked as false. Places that are free to visit include parks, public squares, museums, universities and libraries.")
+    result = agent.start(f"Do the following places have free charge: {', '.join(place_names)}")
+    print(f"LLM raw result: {result}")
+    import re
+    match = re.search(r'\{.*?\}', result, re.DOTALL)
+    if match:
+        free_charge = json.loads(match.group(0))
+    else:
+        print("No valid JSON found in LLM output.")
+    return free_charge  # Placeholder for actual LLM free charge fetching logic
+
+def extract_clusters(latest_llm_output, instruction, image_search=False):
     os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     import json
 
@@ -170,6 +228,11 @@ def extract_clusters(latest_llm_output, instruction):
         attraction_map[list(place.keys())[0]] = list(place.values())[0]
     print(f"Places to map: {places}")
     locations = map_geo_info_with_region_check(places, google_map_key="AIzaSyD8kz0EW1KKo8B3I8GU7nAy19R8S6X6RVE", level='city', request_timeout=2000, total_timeout=10000)
+
+    images = get_place_images(places, serpapi_key = "3d423371d528ef76c3dc640cec8bd13afba828a59d6f26eb24e83686ed4a0067", real_search = image_search)
+    ratings = get_llm_ratings(places)
+    free_charge = get_llm_free_charge(places)
+
     print(f"Locations after mapping: {locations}")
     clusters = cluster_close_locations(locations, eps_km=50)
     print(f"Clusters formed: {clusters}")
@@ -183,6 +246,9 @@ def extract_clusters(latest_llm_output, instruction):
             new_item['name'] = item['name']
             new_item['latitude'] = item['latitude']
             new_item['longitude'] = item['longitude']
+            new_item['image'] = images.get(item['name'], ["https://www.example.com/default_image_2.jpg"])
+            new_item['rating'] = ratings.get(item['name'], 0)
+            new_item['free'] = free_charge.get(item['name'], False)
             print(f"Mapping name to description: {new_item['name']}")
             new_item['description'] = attraction_map[new_item['name']]
             print(f"New item: {new_item}")
@@ -198,6 +264,7 @@ def show_lattest_longtitude_latitude(request):
             body_data = json.loads(body_unicode)
             conversation_id_str = body_data.get('conversation_id')
             user_id = body_data.get('user_id', -1)
+            image_search_true = body_data.get('image_search', False)
 
             if conversation_id_str:
                 print(f"there is conversation {conversation_id_str}")
@@ -224,7 +291,7 @@ def show_lattest_longtitude_latitude(request):
             lattest_content = past_messages.last().content
             print(f"lattest content is {lattest_content}")
             print("calling show_lattest_longtitude_latitude")
-            clusters = extract_clusters(lattest_content, "Extract the main tourist attractions mentioned in the following text with a 50-100 word description")
+            clusters = extract_clusters(lattest_content, "Extract the main tourist attractions mentioned in the following text with about 100 word description", image_search=image_search_true)
             return JsonResponse({
                 "geo_info": clusters
                                 })
@@ -247,6 +314,7 @@ def show_lattest_deepsearch_longtitude_latitude(request):
             body_unicode = request.body.decode('utf-8')
             body_data = json.loads(body_unicode)
             conversation_id = body_data.get('conversation_id')
+            image_search_true = body_data.get('image_search', False)
             #user_id = body_data.get('user_id', -1)
 
             if not conversation_id:
@@ -265,7 +333,7 @@ def show_lattest_deepsearch_longtitude_latitude(request):
                 return JsonResponse({"error": "llm_output not found in latest agent_result"}, status=404)
 
             print(f"Latest llm_output: {latest_llm_output}")
-            clusters = extract_clusters(latest_llm_output, "Extract the main tourist attractions mentioned in the following text Itinerary Table section with a 50-100 word description.")
+            clusters = extract_clusters(latest_llm_output, "Extract the main tourist attractions mentioned in the following text Itinerary Table section with about 100 word description.", image_search=image_search_true)
             
             return JsonResponse({
                 "geo_info": clusters
