@@ -3,7 +3,7 @@ import os
 
 brave_api_key = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0" #     os.getenv("BRAVE_API_KEY")
 os.environ["BRAVE_API_KEY"] = brave_api_key
-os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
 
 brave_api_key = os.getenv("BRAVE_API_KEY")
 

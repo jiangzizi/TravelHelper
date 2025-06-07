@@ -157,7 +157,7 @@ def get_place_images(place_names, serpapi_key, real_search = True):
 def get_llm_ratings(place_names):
     print(f"Fetching LLM ratings for places: {place_names}")
     ratings = {}
-    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     agent = Agent(llm="groq/meta-llama/llama-4-scout-17b-16e-instruct", instructions= "Generate a rating for the following places based on their popularity and significance. The rating should be a float number between 1 and 5, where 1 is the lowest and 5 is the highest. Be strict and avoid rating all places a 5.0. Output your rating in a JSON format with the place name as the key and the rating as the value. Do not include any other information.")
 
     result = agent.start(f"Generate a rating for the following places: {', '.join(place_names)}")
@@ -174,7 +174,7 @@ def get_llm_ratings(place_names):
 def get_llm_free_charge(place_names):
     print(f"Fetching LLM free charge for places: {place_names}")
     free_charge = {}
-    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     agent = Agent(llm="groq/meta-llama/llama-4-scout-17b-16e-instruct", instructions= "Generate a boolean value indicating whether the following places is free to visit or not. Output your result in a JSON format with the place name as the key and a boolean value as the value. Do not include any other information. Places that are free to visit should be marked as true, and those that require a fee should be marked as false. Places that are free to visit include parks, public squares, museums, universities and libraries.")
     result = agent.start(f"Do the following places have free charge: {', '.join(place_names)}")
     print(f"LLM raw result: {result}")
@@ -187,7 +187,7 @@ def get_llm_free_charge(place_names):
     return free_charge  # Placeholder for actual LLM free charge fetching logic
 
 def extract_clusters(latest_llm_output, instruction, image_search=False):
-    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     import json
 
 

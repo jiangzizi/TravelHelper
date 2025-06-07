@@ -22,7 +22,7 @@ def deepsearch(destination="Beijing, China", dates="August 15-22, 2025", budget=
     from mypraisonaiagents import Agent, Agents, MCP
     brave_api_key = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0"
     os.environ["BRAVE_API_KEY"] = brave_api_key
-    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "AIzaSyBh2w64uOFq6AFJFo1BVOy6znh-2C93_38")
     os.environ["OPENROUTER_API_KEY"] = os.getenv("OPENROUTER_API_KEY", "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")
 
@@ -57,7 +57,7 @@ def deepsearch(destination="Beijing, China", dates="August 15-22, 2025", budget=
 def airplane(start_date, end_date, startpoint, destination):
     from mypraisonaiagents import Agent, Agents, MCP
     os.environ["BRAVE_API_KEY"] = "BSAzbNViPbppE07cSHaKYV8dkcgCzz0"
-    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY", "AIzaSyBh2w64uOFq6AFJFo1BVOy6znh-2C93_38")
     os.environ["OPENROUTER_API_KEY"] = os.getenv("OPENROUTER_API_KEY", "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")
     os.environ["DUFFEL_ACCESS_TOKEN"] = os.getenv("DEFFEL_ACCESS_TOKEN", "duffel_test_Li5UOd_hOzpiAwxv3GLp4lQ23Y8bkaXo86R216FMgD-")
@@ -104,7 +104,7 @@ def hotel(start_date, end_date, destination):
     from mypraisonaiagents import Agent, Agents, MCP
     os.environ["AMADEUS_CLIENT_ID"] = "mcehOG8E8AAWpwdNLWFbYE41tNxoIqsk"
     os.environ["AMADEUS_CLIENT_SECRET"] = "6qKytIzAmaELkUP7"
-    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     agent = Agent(
         instructions=f"""search for hotel. Current date is {datetime.datetime.now().strftime('%Y-%m-%d')}.""",
         llm="groq/meta-llama/llama-4-scout-17b-16e-instruct",
@@ -121,7 +121,7 @@ def hotel(start_date, end_date, destination):
 
 def summary(agent_results):
     from mypraisonaiagents import Agent, Agents
-    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
+    os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY", "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")
     
     summary_agent = Agent(
         instructions=(
