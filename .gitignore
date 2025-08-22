@@ -5,3 +5,32 @@ __pycache__
 db.sqlite3
 media
 staticfiles
+
+# Environment variables and secrets
+.env
+.env.local
+.env.production
+.env.development
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Security files
+private_key.*
+*.pem
+*.key
+
+# Django logs
+django.log
+error.log
